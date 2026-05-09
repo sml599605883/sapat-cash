@@ -1,0 +1,318 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/layout/screen.dart';
+import '../../core/network/api/api_client.dart';
+import '../../core/network/core/error_message_adapter.dart';
+import '../main_tab/main_tab_controller.dart';
+
+class MinePage extends StatefulWidget {
+  const MinePage({super.key});
+
+  @override
+  State<MinePage> createState() => _MinePageState();
+}
+
+class _MinePageState extends State<MinePage> {
+  int _lastRefreshToken = 0;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _refreshMineData();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant MinePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+  }
+
+  Future<void> _refreshMineData() async {
+    final refreshToken = context.read<MainTabController>().mineRefreshToken;
+    if (_loading) {
+      return;
+    }
+    _loading = true;
+    _lastRefreshToken = refreshToken;
+    try {
+      await ApiClient.initialize();
+      await apiService.fetchPopup(scene: 2);
+    } catch (error) {
+      EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
+    } finally {
+      if (mounted) {
+        setState(() {});
+      }
+      _loading = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+    final refreshToken = context.select<MainTabController, int>(
+      (controller) => controller.mineRefreshToken,
+    );
+
+    if (_lastRefreshToken != refreshToken) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _lastRefreshToken != refreshToken) {
+          _refreshMineData();
+        }
+      });
+    }
+
+    return ColoredBox(
+      color: Colors.white,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SafeArea(bottom: false, child: SizedBox(height: screen.dp(26))),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  screen.dp(16),
+                  0,
+                  screen.dp(16),
+                  0,
+                ),
+                child: const _MineProfileHeader(),
+              ),
+              SizedBox(height: screen.dp(26)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
+                child: const _MineStatsCard(),
+              ),
+              SizedBox(height: screen.dp(26)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
+                child: const _MineSectionHeader(),
+              ),
+              SizedBox(height: screen.dp(16)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
+                child: const _MineMenuList(),
+              ),
+              SizedBox(height: screen.dp(120)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MineProfileHeader extends StatelessWidget {
+  const _MineProfileHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+
+    return Row(
+      children: [
+        ClipOval(
+          child: Image.asset(
+            'assets/image/mine/mine_avatar.png',
+            width: screen.dp(76),
+            height: screen.dp(76),
+            fit: BoxFit.cover,
+          ),
+        ),
+        SizedBox(width: screen.dp(16)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '962****1234',
+              style: TextStyle(
+                color: const Color(0xFF281001),
+                fontSize: screen.dp(24),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: screen.dp(10)),
+            Text(
+              'User ID:',
+              style: TextStyle(
+                color: const Color(0xFF908E8C),
+                fontSize: screen.dp(16),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MineStatsCard extends StatelessWidget {
+  const _MineStatsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        screen.dp(30),
+        screen.dp(26),
+        screen.dp(30),
+        screen.dp(26),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E1),
+        borderRadius: BorderRadius.circular(screen.dp(14)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: const [
+          _MineStatItem(
+            icon: 'assets/image/mine/mine_icon_1@3x.png',
+            label: 'All',
+          ),
+          _MineStatItem(
+            icon: 'assets/image/mine/mine_icon_2@3x.png',
+            label: 'Outstanding',
+          ),
+          _MineStatItem(
+            icon: 'assets/image/mine/mine_icon_3@3x.png',
+            label: 'Settled',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MineStatItem extends StatelessWidget {
+  const _MineStatItem({required this.icon, required this.label});
+
+  final String icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+
+    return Column(
+      children: [
+        Image.asset(icon, width: screen.dp(56), height: screen.dp(56)),
+        SizedBox(height: screen.dp(10)),
+        Text(
+          label,
+          style: TextStyle(
+            color: const Color(0xFF331707),
+            fontSize: screen.dp(16),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MineSectionHeader extends StatelessWidget {
+  const _MineSectionHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+
+    return Row(
+      children: [
+        Image.asset(
+          'assets/image/mine/mine_badge_dot.png',
+          width: screen.dp(16),
+          height: screen.dp(16),
+        ),
+        SizedBox(width: screen.dp(10)),
+        Text(
+          'Our service',
+          style: TextStyle(
+            color: const Color(0xFF281001),
+            fontSize: screen.dp(18),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MineMenuList extends StatelessWidget {
+  const _MineMenuList();
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+
+    return Column(
+      children: [
+        _MineMenuItem(
+          icon: 'assets/image/mine/mine_contact_icon.png',
+          title: 'Customer service',
+        ),
+        SizedBox(height: screen.dp(16)),
+        _MineMenuItem(
+          icon: 'assets/image/mine/mine_settings_icon.png',
+          title: 'Account',
+        ),
+        SizedBox(height: screen.dp(16)),
+        _MineMenuItem(
+          icon: 'assets/image/mine/mine_privacy_icon.png',
+          title: 'Privacy',
+        ),
+      ],
+    );
+  }
+}
+
+class _MineMenuItem extends StatelessWidget {
+  const _MineMenuItem({required this.icon, required this.title});
+
+  final String icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        screen.dp(16),
+        screen.dp(11),
+        screen.dp(16),
+        screen.dp(11),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F3),
+        borderRadius: BorderRadius.circular(screen.dp(14)),
+      ),
+      child: Row(
+        children: [
+          Image.asset(icon, width: screen.dp(30), height: screen.dp(30)),
+          SizedBox(width: screen.dp(16)),
+          Text(
+            title,
+            style: TextStyle(
+              color: const Color(0xFF331707),
+              fontSize: screen.dp(16),
+              height: 20 / 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
