@@ -221,12 +221,9 @@ class ApiService {
         },
       ),
     );
-    final data = response.data;
-    if (data is Map) {
-      final sessionId = '${data['nucleosyntheses'] ?? ''}'.trim();
-      if (sessionId.isNotEmpty) {
-        await ReportCache.setSessionId(sessionId);
-      }
+    final sessionId = response.json['nucleosyntheses'].stringValue.trim();
+    if (sessionId.isNotEmpty) {
+      await ReportCache.setSessionId(sessionId);
     }
     return response;
   }

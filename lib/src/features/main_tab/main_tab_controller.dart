@@ -15,6 +15,24 @@ class MainTabController extends ChangeNotifier with WidgetsBindingObserver {
   int get homeRefreshToken => _homeRefreshToken;
   int get mineRefreshToken => _mineRefreshToken;
 
+  void switchToHome({bool refresh = false}) {
+    var shouldNotify = false;
+
+    if (_currentIndex != 0) {
+      _currentIndex = 0;
+      shouldNotify = true;
+    }
+
+    if (refresh) {
+      _homeRefreshToken++;
+      shouldNotify = true;
+    }
+
+    if (shouldNotify) {
+      notifyListeners();
+    }
+  }
+
   void onTabTap(int index) {
     if (_currentIndex == index) {
       return;

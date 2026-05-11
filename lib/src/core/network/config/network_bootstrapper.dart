@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../../json/json.dart';
 import 'network_config.dart';
 
 class NetworkBootstrapper {
@@ -23,8 +24,8 @@ class NetworkBootstrapper {
     try {
       final response = await _dio.get<dynamic>(NetworkConfig.remoteConfigUrl);
       final payload = _decodePayload(response.data);
-      final apiBaseUrl = payload['apiBaseUrl'] as String? ?? defaultApi;
-      final webBaseUrl = payload['webBaseUrl'] as String? ?? defaultWeb;
+      final apiBaseUrl = payload['apiBaseUrl'].stringOrNull ?? defaultApi;
+      final webBaseUrl = payload['webBaseUrl'].stringOrNull ?? defaultWeb;
       return NetworkBootstrapResult(
         apiBaseUrl: apiBaseUrl,
         webBaseUrl: webBaseUrl,
@@ -46,20 +47,24 @@ class NetworkBootstrapper {
     }
   }
 
-  Map<String, dynamic> _decodePayload(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      return raw;
+  Json _decodePayload(dynamic raw) {
+    final direct = Json(raw);
+    if (direct.mapOrNull != null) {
+      return direct;
     }
     if (raw is String) {
       final trimmed = raw.trim();
       try {
-        return jsonDecode(trimmed) as Map<String, dynamic>;
+        return Json.parse(trimmed);
       } catch (_) {
-        final decoded = utf8.decode(base64Decode(trimmed));
-        return jsonDecode(decoded) as Map<String, dynamic>;
+        try {
+          return Json.parseBytes(base64Decode(trimmed));
+        } catch (_) {
+          return Json(<String, dynamic>{});
+        }
       }
     }
-    return <String, dynamic>{};
+    return Json(<String, dynamic>{});
   }
 }
 

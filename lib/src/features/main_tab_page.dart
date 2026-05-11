@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/push/app_push.dart';
 import 'auth/auth_controller.dart';
-import 'auth/login_page.dart';
 import 'home/home_page.dart';
 import 'home/widgets/home_bottom_nav.dart';
 import 'main_tab/main_tab_controller.dart';
@@ -12,13 +12,18 @@ class MainTabPage extends StatelessWidget {
   const MainTabPage({super.key});
 
   Future<void> _handleTabTap(BuildContext context, int index) async {
-    if (index == 1 && !context.read<AuthController>().isLoggedIn) {
-      await Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const LoginPage()));
+    final authController = context.read<AuthController>();
+    final mainTabController = context.read<MainTabController>();
+    final navigator = Navigator.of(context);
+    await authController.ensureInitialized();
+    if (index == 1 && !authController.isLoggedIn) {
+      await AppPush.pushLoginWithNavigator(navigator);
       return;
     }
-    context.read<MainTabController>().onTabTap(index);
+    if (!context.mounted) {
+      return;
+    }
+    mainTabController.onTabTap(index);
   }
 
   @override

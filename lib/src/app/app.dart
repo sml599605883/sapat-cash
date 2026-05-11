@@ -14,7 +14,14 @@ class SapatCashApp extends StatelessWidget {
       title: 'Sapat Cash',
       theme: buildAppTheme(),
       home: const MainTabPage(),
-      builder: EasyLoading.init(),
+      builder: (context, child) {
+        final easyLoadingBuilder = EasyLoading.init();
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
+          child: easyLoadingBuilder(context, child),
+        );
+      },
     );
   }
 }

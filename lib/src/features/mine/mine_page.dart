@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
+import '../../core/push/app_push.dart';
 import '../main_tab/main_tab_controller.dart';
 
 class MinePage extends StatefulWidget {
@@ -41,7 +42,6 @@ class _MinePageState extends State<MinePage> {
     _loading = true;
     _lastRefreshToken = refreshToken;
     try {
-      await ApiClient.initialize();
       await apiService.fetchPopup(scene: 2);
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
@@ -266,6 +266,7 @@ class _MineMenuList extends StatelessWidget {
         _MineMenuItem(
           icon: 'assets/image/mine/mine_settings_icon.png',
           title: 'Account',
+          onTap: () => AppPush.pushAccount(context),
         ),
         SizedBox(height: screen.dp(16)),
         _MineMenuItem(
@@ -278,40 +279,44 @@ class _MineMenuList extends StatelessWidget {
 }
 
 class _MineMenuItem extends StatelessWidget {
-  const _MineMenuItem({required this.icon, required this.title});
+  const _MineMenuItem({required this.icon, required this.title, this.onTap});
 
   final String icon;
   final String title;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final screen = context.screen;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        screen.dp(16),
-        screen.dp(11),
-        screen.dp(16),
-        screen.dp(11),
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F3),
-        borderRadius: BorderRadius.circular(screen.dp(14)),
-      ),
-      child: Row(
-        children: [
-          Image.asset(icon, width: screen.dp(30), height: screen.dp(30)),
-          SizedBox(width: screen.dp(16)),
-          Text(
-            title,
-            style: TextStyle(
-              color: const Color(0xFF331707),
-              fontSize: screen.dp(16),
-              height: 20 / 16,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(
+          screen.dp(16),
+          screen.dp(11),
+          screen.dp(16),
+          screen.dp(11),
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F3),
+          borderRadius: BorderRadius.circular(screen.dp(14)),
+        ),
+        child: Row(
+          children: [
+            Image.asset(icon, width: screen.dp(30), height: screen.dp(30)),
+            SizedBox(width: screen.dp(16)),
+            Text(
+              title,
+              style: TextStyle(
+                color: const Color(0xFF331707),
+                fontSize: screen.dp(16),
+                height: 20 / 16,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

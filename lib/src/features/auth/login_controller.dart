@@ -55,7 +55,6 @@ class LoginController extends ChangeNotifier {
     _sendingCode = true;
     notifyListeners();
     try {
-      await ApiClient.initialize();
       await apiService.requestLoginSmsCode(phone: phone);
       _startCountdown();
     } finally {
@@ -69,12 +68,11 @@ class LoginController extends ChangeNotifier {
     _submitting = true;
     notifyListeners();
     try {
-      await ApiClient.initialize();
       final response = await apiService.loginOrRegisterByCode(
         phone: phone,
         code: code,
       );
-      final userToken = response.data['nucleosyntheses'] as String;
+      final userToken = response.json['nucleosyntheses'].stringValue;
       await ReportCache.setLoginAt(DateTime.now().millisecondsSinceEpoch);
       await _authController.markLoggedIn(userToken: userToken, phone: phone);
     } finally {

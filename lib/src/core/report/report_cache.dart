@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../json/json.dart';
 import 'report_models.dart';
 
 class ReportCache {
@@ -69,8 +70,8 @@ class ReportCache {
     if (raw == null || raw.isEmpty) {
       return null;
     }
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map<String, dynamic>) {
+    final decoded = Json.parse(raw).mapOrNull;
+    if (decoded == null) {
       return null;
     }
     final location = ReportLocation.fromCacheMap(decoded);

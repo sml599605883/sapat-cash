@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/layout/screen.dart';
 import '../../core/network/core/error_message_adapter.dart';
+import '../../core/push/app_push.dart';
 import '../../core/widgets/dismiss_keyboard.dart';
 import 'auth_controller.dart';
 import 'login_controller.dart';
@@ -59,9 +60,7 @@ class _LoginViewState extends State<_LoginView> {
   }
 
   void _backToHome() {
-    Navigator.of(
-      context,
-    ).popUntil((route) => route.settings.name == Navigator.defaultRouteName);
+    AppPush.popToHomeTabbar(context);
   }
 
   void _handleCodeChanged() {
@@ -92,7 +91,7 @@ class _LoginViewState extends State<_LoginView> {
     final phone = _phoneController.text;
     final code = _codeController.text;
     FocusScope.of(context).unfocus();
-    EasyLoading.show(status: 'Loading...');
+    EasyLoading.show();
     try {
       await controller.login(rawPhone: phone, code: code);
       if (!mounted) {

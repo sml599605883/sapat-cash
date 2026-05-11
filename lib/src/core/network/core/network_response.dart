@@ -1,3 +1,4 @@
+import '../../json/json.dart';
 import '../config/network_config.dart';
 
 class NetworkResponse<T> {
@@ -12,4 +13,6 @@ class NetworkResponse<T> {
   final T? data;
 
   bool get isSuccess => NetworkConfig.successCodes.contains(code);
+
+  Json get json => Json(data);
 }

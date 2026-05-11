@@ -46,9 +46,8 @@ class _HomePageState extends State<HomePage> {
     }
     _loading = true;
     _lastRefreshToken = refreshToken;
-    EasyLoading.show(status: 'Loading...');
+    EasyLoading.show();
     try {
-      await ApiClient.initialize();
       await Future.wait([
         apiService.fetchAppHome(),
         apiService.fetchPopup(scene: 1),

@@ -1,16 +1,20 @@
+import '../../json/json.dart';
 import 'network_response.dart';
 
 class ResponseParser {
   const ResponseParser();
 
   NetworkResponse<dynamic> parse(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      final code = raw['alligators'] ?? raw['code'];
-      final message = raw['cyanogenetic'] ?? 'Request failed';
-      final data = raw['evaginate'] ?? raw['data'];
+    final json = Json(raw);
+    if (json.mapOrNull != null) {
+      final code = json['alligators'].numOrNull ?? json['code'].numOrNull ?? -1;
+      final message = json['cyanogenetic'].stringOrNull ?? 'Request failed';
+      final data = json['evaginate'].exists()
+          ? json['evaginate'].rawValue
+          : json['data'].rawValue;
       return NetworkResponse<dynamic>(
-        code: code is int ? code : int.tryParse('$code') ?? -1,
-        message: '$message',
+        code: code.toInt(),
+        message: message,
         data: data,
       );
     }

@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/services.dart';
 
+import '../json/json.dart';
 import '../network/debug/network_proxy_manager.dart';
 import 'report_models.dart';
 
@@ -13,12 +14,12 @@ class ReportNativeBridge {
   static const _methodChannel = MethodChannel('sapat_cash/report_method');
   static const _eventChannel = EventChannel('sapat_cash/report_event');
 
-  static Stream<Map<String, dynamic>>? _eventStream;
+  static Stream<Json>? _eventStream;
 
-  static Stream<Map<String, dynamic>> nativeEvents() {
+  static Stream<Json> nativeEvents() {
     _eventStream ??= _eventChannel
         .receiveBroadcastStream()
-        .map((event) => Map<String, dynamic>.from(event as Map))
+        .map((event) => Json(event))
         .handleError((_) {});
     return _eventStream!;
   }
@@ -37,22 +38,23 @@ class ReportNativeBridge {
 
   static Future<ReportLocation?> getLocation() async {
     try {
-      final raw = await _methodChannel.invokeMethod<dynamic>('getLocation');
-      if (raw is! Map) {
+      final json = Json(
+        await _methodChannel.invokeMethod<dynamic>('getLocation'),
+      );
+      if (json.mapOrNull == null) {
         return null;
       }
-      final map = Map<String, dynamic>.from(raw);
       return ReportLocation(
-        province: '${map['province'] ?? ''}'.isEmpty
+        province: json['province'].stringValue.isEmpty
             ? null
-            : '${map['province'] ?? ''}',
-        countryCode: '${map['countryCode'] ?? ''}',
-        country: '${map['country'] ?? ''}',
-        street: '${map['street'] ?? ''}',
-        latitude: '${map['latitude'] ?? ''}',
-        longitude: '${map['longitude'] ?? ''}',
-        city: '${map['city'] ?? ''}',
-        permissionStatus: '${map['permissionStatus'] ?? ''}',
+            : json['province'].stringValue,
+        countryCode: json['countryCode'].stringValue,
+        country: json['country'].stringValue,
+        street: json['street'].stringValue,
+        latitude: json['latitude'].stringValue,
+        longitude: json['longitude'].stringValue,
+        city: json['city'].stringValue,
+        permissionStatus: json['permissionStatus'].stringValue,
       );
     } catch (_) {
       return null;
@@ -65,14 +67,15 @@ class ReportNativeBridge {
 
   static Future<SystemProxyConfig?> getSystemProxy() async {
     try {
-      final raw = await _methodChannel.invokeMethod<dynamic>('getSystemProxy');
-      if (raw is! Map) {
+      final json = Json(
+        await _methodChannel.invokeMethod<dynamic>('getSystemProxy'),
+      );
+      if (json.mapOrNull == null) {
         return null;
       }
-      final map = Map<String, dynamic>.from(raw);
-      final host = '${map['host'] ?? ''}'.trim();
-      final port = int.tryParse('${map['port'] ?? ''}') ?? 0;
-      final enabled = map['enabled'] == true || '${map['enabled']}' == '1';
+      final host = json['host'].stringValue.trim();
+      final port = json['port'].intValue;
+      final enabled = json['enabled'].boolValue;
       return SystemProxyConfig(
         host: host,
         port: port,
@@ -85,47 +88,46 @@ class ReportNativeBridge {
 
   static Future<NativeDeviceSnapshot> getDeviceSnapshot() async {
     try {
-      final raw = await _methodChannel.invokeMethod<dynamic>(
-        'getDeviceSnapshot',
+      final json = Json(
+        await _methodChannel.invokeMethod<dynamic>('getDeviceSnapshot'),
       );
-      if (raw is! Map) {
+      if (json.mapOrNull == null) {
         return _fallbackSnapshot();
       }
-      final map = Map<String, dynamic>.from(raw);
       return NativeDeviceSnapshot(
-        idfv: '${map['idfv'] ?? ''}',
-        idfa: '${map['idfa'] ?? ''}',
-        deviceId: '${map['deviceId'] ?? ''}',
-        batteryLevel: '${map['batteryLevel'] ?? '0'}',
-        isCharging: '${map['isCharging'] ?? '0'}',
-        elapsedMillis: '${map['elapsedMillis'] ?? '0'}',
-        uptimeMillis: '${map['uptimeMillis'] ?? '0'}',
-        isUsingProxy: '${map['isUsingProxy'] ?? '0'}',
-        isUsingVpn: '${map['isUsingVpn'] ?? '0'}',
-        isJailbroken: '${map['isJailbroken'] ?? '0'}',
-        isEmulator: '${map['isEmulator'] ?? '0'}',
-        language: '${map['language'] ?? ''}',
-        carrier: '${map['carrier'] ?? ''}',
-        networkType: '${map['networkType'] ?? ''}',
-        timeZoneName: '${map['timeZoneName'] ?? ''}',
-        cpuCoreCount: '${map['cpuCoreCount'] ?? '0'}',
-        brand: '${map['brand'] ?? ''}',
-        deviceName: '${map['deviceName'] ?? ''}',
-        model: '${map['model'] ?? ''}',
-        osVersion: '${map['osVersion'] ?? ''}',
-        screenHeight: '${map['screenHeight'] ?? '0'}',
-        screenWidth: '${map['screenWidth'] ?? '0'}',
-        screenSize: '${map['screenSize'] ?? '0'}',
-        innerIp: '${map['innerIp'] ?? ''}',
-        currentWifiName: '${map['currentWifiName'] ?? ''}',
-        currentWifiBssid: '${map['currentWifiBssid'] ?? ''}',
-        currentWifiMac: '${map['currentWifiMac'] ?? ''}',
-        availableStorage: '${map['availableStorage'] ?? '0'}',
-        totalStorage: '${map['totalStorage'] ?? '0'}',
-        totalMemory: '${map['totalMemory'] ?? '0'}',
-        availableMemory: '${map['availableMemory'] ?? '0'}',
-        pushToken: '${map['pushToken'] ?? ''}',
-        riskDeviceId: '${map['riskDeviceId'] ?? ''}',
+        idfv: json['idfv'].stringValue,
+        idfa: json['idfa'].stringValue,
+        deviceId: json['deviceId'].stringValue,
+        batteryLevel: json['batteryLevel'].stringOrNull ?? '0',
+        isCharging: json['isCharging'].stringOrNull ?? '0',
+        elapsedMillis: json['elapsedMillis'].stringOrNull ?? '0',
+        uptimeMillis: json['uptimeMillis'].stringOrNull ?? '0',
+        isUsingProxy: json['isUsingProxy'].stringOrNull ?? '0',
+        isUsingVpn: json['isUsingVpn'].stringOrNull ?? '0',
+        isJailbroken: json['isJailbroken'].stringOrNull ?? '0',
+        isEmulator: json['isEmulator'].stringOrNull ?? '0',
+        language: json['language'].stringValue,
+        carrier: json['carrier'].stringValue,
+        networkType: json['networkType'].stringValue,
+        timeZoneName: json['timeZoneName'].stringValue,
+        cpuCoreCount: json['cpuCoreCount'].stringOrNull ?? '0',
+        brand: json['brand'].stringValue,
+        deviceName: json['deviceName'].stringValue,
+        model: json['model'].stringValue,
+        osVersion: json['osVersion'].stringValue,
+        screenHeight: json['screenHeight'].stringOrNull ?? '0',
+        screenWidth: json['screenWidth'].stringOrNull ?? '0',
+        screenSize: json['screenSize'].stringOrNull ?? '0',
+        innerIp: json['innerIp'].stringValue,
+        currentWifiName: json['currentWifiName'].stringValue,
+        currentWifiBssid: json['currentWifiBssid'].stringValue,
+        currentWifiMac: json['currentWifiMac'].stringValue,
+        availableStorage: json['availableStorage'].stringOrNull ?? '0',
+        totalStorage: json['totalStorage'].stringOrNull ?? '0',
+        totalMemory: json['totalMemory'].stringOrNull ?? '0',
+        availableMemory: json['availableMemory'].stringOrNull ?? '0',
+        pushToken: json['pushToken'].stringValue,
+        riskDeviceId: json['riskDeviceId'].stringValue,
       );
     } catch (_) {
       return _fallbackSnapshot();

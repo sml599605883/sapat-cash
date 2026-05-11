@@ -5,6 +5,7 @@ import 'package:adjust_sdk/adjust_config.dart';
 import 'package:adjust_sdk/adjust_session_failure.dart';
 import 'package:adjust_sdk/adjust_session_success.dart';
 
+import '../json/json.dart';
 import '../network/api/api_client.dart';
 import '../network/core/error_message_adapter.dart';
 import 'report_cache.dart';
@@ -26,7 +27,7 @@ class ReportManager {
   bool _pushTokenListenerAttached = false;
   String _reportingPushToken = '';
   Future<ReportLocation?>? _pendingLocationFuture;
-  StreamSubscription<Map<String, dynamic>>? _nativeEventSubscription;
+  StreamSubscription<Json>? _nativeEventSubscription;
   bool _waitingFirstLaunchTracking = false;
   bool _adjustInitializing = false;
 
@@ -36,7 +37,6 @@ class ReportManager {
     }
     _starting = true;
     try {
-      await ApiClient.initialize();
       final isFirstLaunch = await ReportCache.markAppOpened();
       if (isFirstLaunch) {
         _waitingFirstLaunchTracking = true;
@@ -117,7 +117,7 @@ class ReportManager {
       );
       await ReportCache.setLastMarketSignature(signature);
       final token = ReportPayloadHelper.normalize(
-        (response.data as Map?)?['sociolect'],
+        response.json['sociolect'].stringOrNull,
       );
       await _initializeAdjust(token);
     } catch (error) {
@@ -333,9 +333,9 @@ class ReportManager {
     _nativeEventSubscription ??= ReportNativeBridge.nativeEvents().listen((
       event,
     ) {
-      final type = '${event['type'] ?? ''}';
+      final type = event['type'].stringValue;
       if (type == 'tracking_status_changed' && _waitingFirstLaunchTracking) {
-        final status = '${event['status'] ?? ''}'.trim();
+        final status = event['status'].stringValue.trim();
         if (status.isEmpty ||
             status == 'not_supported' ||
             status == 'not_determined') {
@@ -345,7 +345,9 @@ class ReportManager {
         unawaited(reportGoogleMarket());
       }
       if (type == 'push_token' &&
-          ReportPayloadHelper.normalize(event['token']).isNotEmpty) {
+          ReportPayloadHelper.normalize(
+            event['token'].stringOrNull,
+          ).isNotEmpty) {
         unawaited(reportPushToken());
       }
     });
@@ -356,11 +358,13 @@ class ReportManager {
       final event = await ReportNativeBridge.nativeEvents()
           .firstWhere(
             (event) =>
-                '${event['type'] ?? ''}' == 'push_token' &&
-                ReportPayloadHelper.normalize(event['token']).isNotEmpty,
+                event['type'].stringValue == 'push_token' &&
+                ReportPayloadHelper.normalize(
+                  event['token'].stringOrNull,
+                ).isNotEmpty,
           )
           .timeout(const Duration(seconds: 5));
-      return ReportPayloadHelper.normalize(event['token']);
+      return ReportPayloadHelper.normalize(event['token'].stringOrNull);
     } catch (_) {
       return '';
     }
