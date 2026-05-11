@@ -18,11 +18,15 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> markLoggedIn({required String phone}) async {
+  Future<void> markLoggedIn({
+    required String userToken,
+    required String phone,
+  }) async {
     _loggedIn = true;
     _phone = phone;
     await AuthCache.setLoggedIn(true);
     await AuthCache.setPhone(phone);
+    await AuthCache.setUserToken(userToken);
     notifyListeners();
   }
 

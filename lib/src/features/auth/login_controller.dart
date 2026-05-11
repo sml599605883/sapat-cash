@@ -11,7 +11,7 @@ class LoginController extends ChangeNotifier {
 
   final AuthController _authController;
 
-  bool _agreed = false;
+  bool _agreed = true;
   bool _sendingCode = false;
   bool _submitting = false;
   int _countdown = 0;
@@ -66,17 +66,17 @@ class LoginController extends ChangeNotifier {
 
   Future<void> login({required String rawPhone, required String code}) async {
     final phone = buildRequestPhone(rawPhone);
-    final normalizedCode = code.replaceAll(RegExp(r'[^0-9]'), '');
     _submitting = true;
     notifyListeners();
     try {
       await ApiClient.initialize();
-      await apiService.loginOrRegisterByCode(
+      final response = await apiService.loginOrRegisterByCode(
         phone: phone,
-        code: normalizedCode,
+        code: code,
       );
+      final userToken = response.data['nucleosyntheses'] as String;
       await ReportCache.setLoginAt(DateTime.now().millisecondsSinceEpoch);
-      await _authController.markLoggedIn(phone: phone);
+      await _authController.markLoggedIn(userToken: userToken, phone: phone);
     } finally {
       _submitting = false;
       notifyListeners();

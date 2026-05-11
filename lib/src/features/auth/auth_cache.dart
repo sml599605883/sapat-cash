@@ -4,6 +4,7 @@ class AuthCache {
   const AuthCache._();
 
   static const _keyLoggedIn = 'auth.logged_in';
+  static const _keyUserToken = 'auth.user_token';
   static const _keyPhone = 'auth.phone';
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
@@ -16,6 +17,16 @@ class AuthCache {
   static Future<void> setLoggedIn(bool value) async {
     final prefs = await _prefs();
     await prefs.setBool(_keyLoggedIn, value);
+  }
+
+  static Future<String> getUserToken() async {
+    final prefs = await _prefs();
+    return prefs.getString(_keyUserToken) ?? '';
+  }
+
+  static Future<void> setUserToken(String value) async {
+    final prefs = await _prefs();
+    await prefs.setString(_keyUserToken, value);
   }
 
   static Future<String> getPhone() async {
@@ -31,6 +42,7 @@ class AuthCache {
   static Future<void> clear() async {
     final prefs = await _prefs();
     await prefs.remove(_keyLoggedIn);
+    await prefs.remove(_keyUserToken);
     await prefs.remove(_keyPhone);
   }
 }

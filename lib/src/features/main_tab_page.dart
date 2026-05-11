@@ -13,12 +13,10 @@ class MainTabPage extends StatelessWidget {
 
   Future<void> _handleTabTap(BuildContext context, int index) async {
     if (index == 1 && !context.read<AuthController>().isLoggedIn) {
-      final loggedIn = await Navigator.of(
+      await Navigator.of(
         context,
-      ).push<bool>(MaterialPageRoute(builder: (_) => const LoginPage()));
-      if (loggedIn != true || !context.mounted) {
-        return;
-      }
+      ).push(MaterialPageRoute(builder: (_) => const LoginPage()));
+      return;
     }
     context.read<MainTabController>().onTabTap(index);
   }

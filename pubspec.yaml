@@ -67,6 +67,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/image/
     - assets/image/home/
     - assets/image/bar/
     - assets/image/login/
