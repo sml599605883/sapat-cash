@@ -93,7 +93,7 @@ class _LoginViewState extends State<_LoginView> {
     FocusScope.of(context).unfocus();
     EasyLoading.show();
     try {
-      await controller.login(rawPhone: phone, code: code);
+      await controller.login(phone: phone, code: code);
       if (!mounted) {
         return;
       }

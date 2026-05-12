@@ -28,30 +28,12 @@ class LoginController extends ChangeNotifier {
     notifyListeners();
   }
 
-  String normalizePhone(String rawPhone) {
-    return rawPhone.replaceAll(RegExp(r'[^0-9]'), '');
-  }
-
-  String buildRequestPhone(String rawPhone) {
-    final normalized = normalizePhone(rawPhone);
-    if (normalized.startsWith('63')) {
-      return '+$normalized';
-    }
-    return '+63$normalized';
-  }
-
-  bool isPhoneValid(String rawPhone) {
-    final normalized = normalizePhone(rawPhone);
-    return normalized.length >= 10 && normalized.length <= 13;
-  }
-
   bool isCodeValid(String code) {
     final normalized = code.replaceAll(RegExp(r'[^0-9]'), '');
     return normalized.length >= 4;
   }
 
-  Future<void> requestSmsCode(String rawPhone) async {
-    final phone = buildRequestPhone(rawPhone);
+  Future<void> requestSmsCode(String phone) async {
     _sendingCode = true;
     notifyListeners();
     try {
@@ -63,8 +45,7 @@ class LoginController extends ChangeNotifier {
     }
   }
 
-  Future<void> login({required String rawPhone, required String code}) async {
-    final phone = buildRequestPhone(rawPhone);
+  Future<void> login({required String phone, required String code}) async {
     _submitting = true;
     notifyListeners();
     try {
