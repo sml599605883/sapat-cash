@@ -2,6 +2,7 @@ import '../core/network_manager.dart';
 import '../core/network_response.dart';
 import '../protocol/signature_helper.dart';
 import '../../report/report_cache.dart';
+import '../../../features/home/home_models.dart';
 import 'api_endpoints.dart';
 
 class ApiService {
@@ -144,13 +145,18 @@ class ApiService {
     );
   }
 
-  Future<NetworkResponse<dynamic>> fetchAppHome() {
-    return _networkManager.get(
+  Future<NetworkResponse<AppHomeResponse>> fetchAppHome() async {
+    final response = await _networkManager.get(
       ApiEndpoints.fetchAppHome,
       queryParameters: _withObfuscatedFields({}, {
         'virginal': _randomObfuscatedValue(),
         'broker': _randomObfuscatedValue(),
       }),
+    );
+    return NetworkResponse<AppHomeResponse>(
+      code: response.code,
+      message: response.message,
+      data: AppHomeResponse.fromJson(response.data),
     );
   }
 

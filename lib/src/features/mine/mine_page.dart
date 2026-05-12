@@ -6,6 +6,7 @@ import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../core/push/app_push.dart';
+import '../auth/auth_controller.dart';
 import '../main_tab/main_tab_controller.dart';
 
 class MinePage extends StatefulWidget {
@@ -117,6 +118,9 @@ class _MineProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screen = context.screen;
+    final phone = context.select<AuthController, String>(
+      (controller) => controller.phone,
+    );
 
     return Row(
       children: [
@@ -133,7 +137,7 @@ class _MineProfileHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '962****1234',
+              _maskedPhone(phone),
               style: TextStyle(
                 color: const Color(0xFF281001),
                 fontSize: screen.dp(24),
@@ -152,6 +156,16 @@ class _MineProfileHeader extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _maskedPhone(String phone) {
+    final normalized = phone.trim();
+    if (normalized.length < 7) {
+      return normalized.isEmpty ? '---' : normalized;
+    }
+    final prefix = normalized.substring(0, 3);
+    final suffix = normalized.substring(normalized.length - 4);
+    return '$prefix****$suffix';
   }
 }
 

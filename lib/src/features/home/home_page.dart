@@ -6,6 +6,7 @@ import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../main_tab/main_tab_controller.dart';
+import 'home_models.dart';
 import 'widgets/home_promo_banner.dart';
 import 'widgets/home_top_section.dart';
 
@@ -19,6 +20,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _lastRefreshToken = 0;
   bool _loading = false;
+  AppHomeResponse? _homeData;
 
   @override
   void initState() {
@@ -48,10 +50,11 @@ class _HomePageState extends State<HomePage> {
     _lastRefreshToken = refreshToken;
     EasyLoading.show();
     try {
-      await Future.wait([
+      final results = await Future.wait([
         apiService.fetchAppHome(),
         apiService.fetchPopup(scene: 1),
       ]);
+      _homeData = results.first.data as AppHomeResponse?;
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
     } finally {
@@ -90,8 +93,13 @@ class _HomePageState extends State<HomePage> {
           ),
           child: Column(
             children: [
-              const HomeTopSection(),
-              const HomePromoBanner(),
+              HomeTopSection(
+                section: _homeData?.firstSection(HomeSectionType.largeCard),
+                icon: _homeData?.icon,
+              ),
+              HomePromoBanner(
+                section: _homeData?.firstSection(HomeSectionType.banner),
+              ),
               SizedBox(height: screen.dp(24)),
             ],
           ),
