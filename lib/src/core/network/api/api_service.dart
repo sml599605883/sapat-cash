@@ -134,6 +134,54 @@ class ApiService {
     );
   }
 
+  Future<NetworkResponse<dynamic>> fetchOrderLandingUrl({
+    required String orderNo,
+    required String amount,
+    required String loanTerm,
+    required String loanTermType,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.fetchOrderLandingUrl,
+      body: _withObfuscatedFields(
+        {
+          'slynesses': orderNo,
+          'undersexed': amount,
+          'fieldstone': loanTerm,
+          'nonbiological': loanTermType,
+        },
+        {
+          'unfrocking': _randomObfuscatedValue(),
+          'talkathon': _randomObfuscatedValue(),
+          'designed': _randomObfuscatedValue(),
+          'aurality': _randomObfuscatedValue(),
+        },
+      ),
+    );
+  }
+
+  Future<NetworkResponse<OrderListResponse>> fetchOrderList({
+    required String status,
+    required String page,
+  }) async {
+    final response = await _networkManager.post(
+      ApiEndpoints.fetchOrderList,
+      body: _withObfuscatedFields(
+        {'balsamic': status, 'farmhouses': page, 'bollixing': '50'},
+        {
+          'unfrocking': _randomObfuscatedValue(),
+          'talkathon': _randomObfuscatedValue(),
+          'designed': _randomObfuscatedValue(),
+          'aurality': _randomObfuscatedValue(),
+        },
+      ),
+    );
+    return NetworkResponse<OrderListResponse>(
+      code: response.code,
+      message: response.message,
+      data: OrderListResponse.fromJson(response.data),
+    );
+  }
+
   Future<NetworkResponse<ProductDetailModel>> productDetail({
     required String productId,
   }) async {

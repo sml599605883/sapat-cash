@@ -12,17 +12,13 @@ enum HomeSectionType {
 }
 
 class AppHomeResponse {
-  AppHomeResponse({
-    required this.icon,
-    required this.sections,
-  });
+  AppHomeResponse({required this.icon, required this.sections});
 
   factory AppHomeResponse.fromJson(dynamic raw) {
     final json = Json(raw);
     return AppHomeResponse(
       icon: HomeIconEntry.fromJson(json['hideout']),
-      sections: json['noniron']
-          .listValue
+      sections: json['noniron'].listValue
           .map((item) => HomeSection.fromJson(item))
           .toList(),
     );
@@ -69,8 +65,7 @@ class HomeSection {
     return HomeSection(
       type: HomeSectionTypeMapper.fromApiValue(rawType),
       rawType: rawType,
-      items: json['platinoids']
-          .listValue
+      items: json['platinoids'].listValue
           .map((item) => HomeSectionItem.fromJson(item))
           .toList(),
     );
@@ -141,12 +136,10 @@ class HomeSectionItem {
       authFinished: json['tuyer'].intOrNull == 1,
       receiptAccount: json['grewsomest'].stringOrNull,
       receiptAccountText: json['exception'].stringOrNull,
-      authProgress: json['conflicted']
-          .listValue
+      authProgress: json['conflicted'].listValue
           .map((item) => HomeProgressEntry.fromJson(item))
           .toList(),
-      creditProgress: json['gadid']
-          .listValue
+      creditProgress: json['gadid'].listValue
           .map((item) => HomeCreditProgressEntry.fromJson(item))
           .toList(),
       tags: json['satirical'].listValue.map((item) => '$item').toList(),
@@ -163,8 +156,7 @@ class HomeSectionItem {
       orderStatusText: json['counterargues'].stringOrNull,
       progressDescription: json['rigidified'].stringOrNull,
       orderDetailLink: json['oreides'].stringOrNull,
-      buttons: json['kleagle']
-          .listValue
+      buttons: json['kleagle'].listValue
           .map((item) => HomeActionButton.fromJson(item))
           .toList(),
     );
@@ -324,4 +316,21 @@ class HomeActionTypeMapper {
     'change': HomeActionType.change,
     'repay': HomeActionType.repay,
   };
+}
+
+class OrderListResponse {
+  const OrderListResponse({required this.items, required this.page});
+
+  factory OrderListResponse.fromJson(dynamic raw) {
+    final json = Json(raw);
+    return OrderListResponse(
+      items: json['noniron'].listValue
+          .map((item) => HomeSectionItem.fromJson(item))
+          .toList(),
+      page: json['damselfly'].intOrNull ?? 0,
+    );
+  }
+
+  final List<HomeSectionItem> items;
+  final int page;
 }

@@ -370,147 +370,142 @@ final class AppPush {
   static Future<void> _handleProductDetailLanding(
     ProductDetailModel? detail,
   ) async {
-    if (detail == null || detail.profiteers.isNull()) {
-      debugPrint('product detail profiteers is null, call related api later');
+    if (detail == null) {
+      return;
+    }
+
+    if (detail.profiteers.isNull()) {
+      await _openOrderLandingByDetail(detail);
       return;
     }
 
     final derms = detail.profiteers['derms'].stringOrNull?.trim() ?? '';
-    final comment = _profiteersDermsComment(derms);
-    debugPrint('product detail profiteers.derms: $derms ($comment)');
     // `derms` is the backend-driven next-step marker for the apply flow.
-    if (derms == 'UnravishedOrderable') {
-      final currentContext = SapatCashApp.navigatorKey.currentContext;
-      if (currentContext == null) {
-        return;
-      }
-      await pushIdentityVerification(
-        currentContext,
-        productId: detail.productId,
-      );
+    await _handleProfiteersDerms(detail, derms);
+  }
+
+  static Future<void> _handleProfiteersDerms(
+    ProductDetailModel detail,
+    String derms,
+  ) async {
+    final currentContext = SapatCashApp.navigatorKey.currentContext;
+    if (currentContext == null) {
       return;
     }
 
-    if (derms == 'AsunderSabir') {
-      final currentContext = SapatCashApp.navigatorKey.currentContext;
-      if (currentContext == null) {
-        return;
-      }
-      EasyLoading.dismiss();
-      await pushAndRemoveRoutes(
-        currentContext,
-        page: const FaceVerificationPage(),
-        routeName: RouteNames.faceVerification,
-        removeRouteNames: const [
-          RouteNames.identityVerification,
-          RouteNames.idUploadDemo,
-          RouteNames.identityUploadSuccess,
-        ],
-      );
-      return;
-    }
-
-    if (derms == 'Liquidating') {
-      final currentContext = SapatCashApp.navigatorKey.currentContext;
-      if (currentContext == null) {
-        return;
-      }
-      await pushAndRemoveRoutes(
-        currentContext,
-        page: PersonalInformationPage(productId: detail.productId),
-        routeName: RouteNames.personalInformation,
-        removeRouteNames: const [
-          RouteNames.identityVerification,
-          RouteNames.idUploadDemo,
-          RouteNames.identityUploadSuccess,
-          RouteNames.faceVerification,
-        ],
-      );
-      return;
-    }
-
-    if (derms == 'AtrophyAlertest') {
-      final currentContext = SapatCashApp.navigatorKey.currentContext;
-      if (currentContext == null) {
-        return;
-      }
-      await pushAndRemoveRoutes(
-        currentContext,
-        page: WorkInformationPage(productId: detail.productId),
-        routeName: RouteNames.workInformation,
-        removeRouteNames: const [
-          RouteNames.identityVerification,
-          RouteNames.idUploadDemo,
-          RouteNames.identityUploadSuccess,
-          RouteNames.faceVerification,
-          RouteNames.personalInformation,
-        ],
-      );
-      return;
-    }
-
-    if (derms == 'InwardnessCapturer') {
-      final currentContext = SapatCashApp.navigatorKey.currentContext;
-      if (currentContext == null) {
-        return;
-      }
-      await pushAndRemoveRoutes(
-        currentContext,
-        page: ContactInformationPage(productId: detail.productId),
-        routeName: RouteNames.contactInformation,
-        removeRouteNames: const [
-          RouteNames.identityVerification,
-          RouteNames.idUploadDemo,
-          RouteNames.identityUploadSuccess,
-          RouteNames.faceVerification,
-          RouteNames.personalInformation,
-          RouteNames.workInformation,
-        ],
-      );
-      return;
-    }
-
-    if (derms == 'Cakewalked') {
-      final currentContext = SapatCashApp.navigatorKey.currentContext;
-      if (currentContext == null) {
-        return;
-      }
-      await pushAndRemoveRoutes(
-        currentContext,
-        page: BindCardPage(
+    switch (derms) {
+      case 'UnravishedOrderable':
+        await pushIdentityVerification(
+          currentContext,
           productId: detail.productId,
-          orderNo: detail.orderNo,
-        ),
-        routeName: RouteNames.bindCard,
-        removeRouteNames: const [
-          RouteNames.identityVerification,
-          RouteNames.idUploadDemo,
-          RouteNames.identityUploadSuccess,
-          RouteNames.faceVerification,
-          RouteNames.personalInformation,
-          RouteNames.workInformation,
-          RouteNames.contactInformation,
-        ],
-      );
+        );
+        return;
+      case 'AsunderSabir':
+        EasyLoading.dismiss();
+        await pushAndRemoveRoutes(
+          currentContext,
+          page: const FaceVerificationPage(),
+          routeName: RouteNames.faceVerification,
+          removeRouteNames: const [
+            RouteNames.identityVerification,
+            RouteNames.idUploadDemo,
+            RouteNames.identityUploadSuccess,
+          ],
+        );
+        return;
+      case 'Liquidating':
+        await pushAndRemoveRoutes(
+          currentContext,
+          page: PersonalInformationPage(productId: detail.productId),
+          routeName: RouteNames.personalInformation,
+          removeRouteNames: const [
+            RouteNames.identityVerification,
+            RouteNames.idUploadDemo,
+            RouteNames.identityUploadSuccess,
+            RouteNames.faceVerification,
+          ],
+        );
+        return;
+      case 'AtrophyAlertest':
+        await pushAndRemoveRoutes(
+          currentContext,
+          page: WorkInformationPage(productId: detail.productId),
+          routeName: RouteNames.workInformation,
+          removeRouteNames: const [
+            RouteNames.identityVerification,
+            RouteNames.idUploadDemo,
+            RouteNames.identityUploadSuccess,
+            RouteNames.faceVerification,
+            RouteNames.personalInformation,
+          ],
+        );
+        return;
+      case 'InwardnessCapturer':
+        await pushAndRemoveRoutes(
+          currentContext,
+          page: ContactInformationPage(productId: detail.productId),
+          routeName: RouteNames.contactInformation,
+          removeRouteNames: const [
+            RouteNames.identityVerification,
+            RouteNames.idUploadDemo,
+            RouteNames.identityUploadSuccess,
+            RouteNames.faceVerification,
+            RouteNames.personalInformation,
+            RouteNames.workInformation,
+          ],
+        );
+        return;
+      case 'Cakewalked':
+        await pushAndRemoveRoutes(
+          currentContext,
+          page: BindCardPage(
+            productId: detail.productId,
+            orderNo: detail.orderNo,
+          ),
+          routeName: RouteNames.bindCard,
+          removeRouteNames: const [
+            RouteNames.identityVerification,
+            RouteNames.idUploadDemo,
+            RouteNames.identityUploadSuccess,
+            RouteNames.faceVerification,
+            RouteNames.personalInformation,
+            RouteNames.workInformation,
+            RouteNames.contactInformation,
+          ],
+        );
+        return;
+      default:
+        return;
     }
   }
 
-  static String _profiteersDermsComment(String derms) {
-    switch (derms) {
-      case 'UnravishedOrderable':
-        return '身份认证';
-      case 'AsunderSabir':
-        return '活体认证';
-      case 'Liquidating':
-        return '个人信息';
-      case 'AtrophyAlertest':
-        return '工作信息';
-      case 'InwardnessCapturer':
-        return '紧急联系人';
-      case 'Cakewalked':
-        return '银行卡信息';
-      default:
-        return '未知认证项';
+  static Future<void> _openOrderLandingByDetail(
+    ProductDetailModel detail,
+  ) async {
+    final currentContext = SapatCashApp.navigatorKey.currentContext;
+    if (currentContext == null) {
+      return;
+    }
+
+    final orderNo = detail.orderNo.trim();
+    if (orderNo.isEmpty) {
+      return;
+    }
+
+    final response = await apiService.fetchOrderLandingUrl(
+      orderNo: orderNo,
+      amount: detail.amount.trim(),
+      loanTerm: detail.fieldstone.trim(),
+      loanTermType: '${detail.nonbiological}',
+    );
+    final oreides = response.json['oreides'].stringOrNull?.trim() ?? '';
+    if (oreides.isEmpty) {
+      return;
+    }
+
+    final opened = await _openLandingUrl(Navigator.of(currentContext), oreides);
+    if (!opened) {
+      throw const BusinessException('Unable to open link');
     }
   }
 
