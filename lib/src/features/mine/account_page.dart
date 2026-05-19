@@ -7,16 +7,23 @@ import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../core/push/app_push.dart';
+import '../../core/push/route_names.dart';
 import '../auth/auth_controller.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
+
+  static const routeName = RouteNames.account;
 
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
 
 class _AccountPageState extends State<AccountPage> {
+  static const double _dialogDesignWidth = 319;
+  static const double _dialogHeroDesignWidth = 122;
+  static const double _dialogHeroDesignHeight = 92;
+
   String _appVersion = '';
 
   @override
@@ -115,6 +122,12 @@ class _AccountPageState extends State<AccountPage> {
       barrierColor: const Color.fromRGBO(0, 0, 0, 0.55),
       builder: (dialogContext) {
         final screen = dialogContext.screen;
+        final dialogWidth = screen.width - screen.dp(56);
+        final dialogContentWidth = dialogWidth - screen.dp(47);
+        final heroWidth =
+            dialogWidth * (_dialogHeroDesignWidth / _dialogDesignWidth);
+        final heroHeight =
+            heroWidth * (_dialogHeroDesignHeight / _dialogHeroDesignWidth);
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.symmetric(horizontal: screen.dp(28)),
@@ -122,7 +135,7 @@ class _AccountPageState extends State<AccountPage> {
             borderRadius: BorderRadius.circular(screen.dp(14)),
           ),
           child: Container(
-            width: screen.dp(319),
+            width: dialogWidth,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(screen.dp(14)),
@@ -132,11 +145,9 @@ class _AccountPageState extends State<AccountPage> {
               children: [
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.fromLTRB(
-                    screen.dp(102),
-                    screen.dp(16),
-                    screen.dp(95),
-                    screen.dp(4),
+                  padding: EdgeInsets.only(
+                    top: screen.dp(16),
+                    bottom: screen.dp(4),
                   ),
                   decoration: const BoxDecoration(
                     borderRadius: BorderRadius.only(
@@ -152,11 +163,13 @@ class _AccountPageState extends State<AccountPage> {
                       ],
                     ),
                   ),
-                  child: Image.asset(
-                    'assets/image/mine/account_dialog_hero.png',
-                    width: screen.dp(122),
-                    height: screen.dp(92),
-                    fit: BoxFit.contain,
+                  child: Center(
+                    child: Image.asset(
+                      'assets/image/mine/account_dialog_hero.png',
+                      width: heroWidth,
+                      height: heroHeight,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 SizedBox(height: screen.dp(30)),
@@ -171,7 +184,7 @@ class _AccountPageState extends State<AccountPage> {
                 ),
                 SizedBox(height: screen.dp(16)),
                 SizedBox(
-                  width: screen.dp(272),
+                  width: dialogContentWidth,
                   height: screen.dp(contentHeight),
                   child: Text(
                     message,

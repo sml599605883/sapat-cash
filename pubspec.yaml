@@ -40,9 +40,16 @@ dependencies:
   device_info_plus: ^11.5.0
   encrypt: ^5.0.3
   flutter_easyloading: ^3.0.5
+  flutter_image_compress: ^2.4.0
+  flutter_native_contact_picker: ^0.0.12
+  image_picker: ^1.2.2
   package_info_plus: ^8.3.1
+  path_provider: ^2.1.5
+  permission_handler: ^11.4.0
   provider: ^6.1.5
   shared_preferences: ^2.5.3
+  url_launcher: ^6.3.2
+  trustdevice_pro_plugin: ^1.5.3
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +79,8 @@ flutter:
     - assets/image/bar/
     - assets/image/login/
     - assets/image/mine/
+    - assets/image/verification/
+    - assets/image/line/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

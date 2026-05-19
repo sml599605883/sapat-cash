@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/screen.dart';
+import '../../../core/push/app_push.dart';
 import '../home_models.dart';
 
 class HomePromoBanner extends StatefulWidget {
@@ -75,6 +76,7 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
     final screen = context.screen;
     final banners = _banners;
     final width = screen.width - screen.dp(16) * 2;
+    final height = width * (120.0 / 343.0);
     if (banners.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -82,14 +84,15 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
     if (banners.length == 1) {
       return _BannerImage(
         width: width,
-        height: width * (120.0 / 343.0),
+        height: height,
         imageUrl: banners.first.imageUrl!,
+        onTap: () => _handleBannerTap(banners.first),
       );
     }
 
     return SizedBox(
       width: width,
-      height: width * (120.0 / 343.0),
+      height: height,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(screen.dp(14)),
         child: PageView.builder(
@@ -100,14 +103,23 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
           },
           itemBuilder: (context, index) {
             return _BannerImage(
-              width: screen.dp(343),
-              height: screen.dp(120),
+              width: width,
+              height: height,
               imageUrl: banners[index].imageUrl!,
+              onTap: () => _handleBannerTap(banners[index]),
             );
           },
         ),
       ),
     );
+  }
+
+  void _handleBannerTap(HomeSectionItem item) {
+    final productId = item.productId?.trim() ?? '';
+    if (productId.isEmpty) {
+      return;
+    }
+    AppPush.productDetail(context, productId: productId);
   }
 }
 
@@ -116,23 +128,29 @@ class _BannerImage extends StatelessWidget {
     required this.width,
     required this.height,
     required this.imageUrl,
+    required this.onTap,
   });
 
   final double width;
   final double height;
   final String imageUrl;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Image.network(
-        imageUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Image.asset(
-          'assets/image/home/home_banner_promo.png',
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Image.network(
+          imageUrl,
           fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Image.asset(
+            'assets/image/home/home_banner_promo.png',
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );

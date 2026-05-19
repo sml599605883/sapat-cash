@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/push/app_push.dart';
 import 'auth/auth_controller.dart';
+import '../core/push/route_names.dart';
 import 'home/home_page.dart';
 import 'home/widgets/home_bottom_nav.dart';
 import 'main_tab/main_tab_controller.dart';
@@ -10,6 +11,8 @@ import 'mine/mine_page.dart';
 
 class MainTabPage extends StatelessWidget {
   const MainTabPage({super.key});
+
+  static const routeName = RouteNames.mainTab;
 
   Future<void> _handleTabTap(BuildContext context, int index) async {
     final authController = context.read<AuthController>();

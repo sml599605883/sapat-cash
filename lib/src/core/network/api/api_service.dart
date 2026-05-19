@@ -3,6 +3,9 @@ import '../core/network_response.dart';
 import '../protocol/signature_helper.dart';
 import '../../report/report_cache.dart';
 import '../../../features/home/home_models.dart';
+import '../../../features/product/product_detail_cache.dart';
+import '../../../features/product/product_detail_model.dart';
+import '../../../features/verification/models/address_region_model.dart';
 import 'api_endpoints.dart';
 
 class ApiService {
@@ -131,8 +134,10 @@ class ApiService {
     );
   }
 
-  Future<NetworkResponse<dynamic>> productDetail({required String productId}) {
-    return _networkManager.post(
+  Future<NetworkResponse<ProductDetailModel>> productDetail({
+    required String productId,
+  }) async {
+    final response = await _networkManager.post(
       ApiEndpoints.productDetail,
       body: _withObfuscatedFields(
         {'silken': productId},
@@ -142,6 +147,13 @@ class ApiService {
           'soundable': _randomObfuscatedValue(),
         },
       ),
+    );
+    final detail = ProductDetailModel.fromJson(response.data);
+    ProductDetailCache.save(detail);
+    return NetworkResponse<ProductDetailModel>(
+      code: response.code,
+      message: response.message,
+      data: detail,
     );
   }
 
@@ -250,6 +262,264 @@ class ApiService {
       queryParameters: _withObfuscatedFields({}, {
         'urethrae': _randomObfuscatedValue(),
       }),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchIdentityInfo({
+    required String productId,
+  }) {
+    return _networkManager.get(
+      ApiEndpoints.fetchIdentityInfo,
+      queryParameters: _withObfuscatedFields(
+        {'silken': productId},
+        {'requiters': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> uploadIdentityAsset({
+    required String type,
+    required String imageSource,
+    required String cardType,
+    String? bizTokenOrLivenessId,
+    String? authCode,
+    String? faceType,
+    String? businessNo,
+    String? filePath,
+  }) {
+    return _networkManager.upload(
+      ApiEndpoints.uploadIdentityAsset,
+      body: _withObfuscatedFields({
+        'refortification': type,
+        'nonrealistic': imageSource,
+        'tutorials': cardType,
+        'salivate': bizTokenOrLivenessId,
+        'pyramidal': authCode,
+        'unreminiscent': faceType,
+        'unrelaxed': businessNo,
+      }, {}),
+      filePath: filePath,
+      fileField: 'attach',
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> saveIdentityInfo({
+    required String birthday,
+    required String certificateNo,
+    required String fullName,
+    required String type,
+    required String cardType,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.saveIdentityInfo,
+      body: _withObfuscatedFields(
+        {
+          'tittie': birthday,
+          'sketchbooks': certificateNo,
+          'fornices': fullName,
+          'refortification': type,
+          'tutorials': cardType,
+        },
+        {'quittor': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> checkBaseCertification({
+    required String productId,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.checkBaseCertification,
+      body: _withObfuscatedFields(
+        {'silken': productId},
+        {
+          'semillon': _randomObfuscatedValue(),
+          'pilaffs': _randomObfuscatedValue(),
+        },
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchFaceToken({
+    required String orderNo,
+    required String type,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.fetchFaceToken,
+      body: _withObfuscatedFields(
+        {'slynesses': orderNo, 'refortification': type},
+        {
+          'manifest': _randomObfuscatedValue(),
+          'unusualness': _randomObfuscatedValue(),
+        },
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchUserInfo({required String productId}) {
+    return _networkManager.post(
+      ApiEndpoints.fetchUserInfo,
+      body: _withObfuscatedFields(
+        {'silken': productId},
+        {'eremuruses': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> saveUserInfo({
+    required Map<String, dynamic> fields,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.saveUserInfo,
+      body: _withObfuscatedFields(fields, {
+        'remediations': _randomObfuscatedValue(),
+        'insistent': _randomObfuscatedValue(),
+      }),
+    );
+  }
+
+  Future<NetworkResponse<List<AddressRegionModel>>> initializeAddress() async {
+    final response = await _networkManager.get(ApiEndpoints.initializeAddress);
+    final regions = response.json['noniron'].listValue
+        .map((item) => AddressRegionModel.fromJson(item))
+        .toList(growable: false);
+    return NetworkResponse<List<AddressRegionModel>>(
+      code: response.code,
+      message: response.message,
+      data: regions,
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchWorkInfo({required String productId}) {
+    return _networkManager.get(
+      ApiEndpoints.fetchWorkInfo,
+      queryParameters: _withObfuscatedFields(
+        {'silken': productId},
+        {'eremuruses': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> saveWorkInfo({
+    required Map<String, dynamic> fields,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.saveWorkInfo,
+      body: _withObfuscatedFields(fields, {
+        'fonded': _randomObfuscatedValue(),
+        'muggars': _randomObfuscatedValue(),
+        'flying': _randomObfuscatedValue(),
+      }),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchContactInfo({
+    required String productId,
+  }) {
+    return _networkManager.get(
+      ApiEndpoints.fetchContactInfo,
+      queryParameters: _withObfuscatedFields(
+        {'silken': productId},
+        {'tefillin': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> saveContactInfo({
+    required String productId,
+    required String contactsJson,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.saveContactInfo,
+      body: _withObfuscatedFields(
+        {'silken': productId, 'evaginate': contactsJson},
+        {'zookeepers': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchBindCardInfo({
+    required String productId,
+  }) {
+    return _networkManager.get(
+      ApiEndpoints.fetchBindCardInfo,
+      queryParameters: _withObfuscatedFields(
+        {'silken': productId},
+        {
+          'unfixt': _randomObfuscatedValue(),
+          'cottony': _randomObfuscatedValue(),
+        },
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> submitBindCard({
+    required Map<String, dynamic> fields,
+    String? filePath,
+  }) {
+    return _networkManager.upload(
+      ApiEndpoints.submitBindCard,
+      body: _withObfuscatedFields(fields, {}),
+      filePath: filePath,
+      fileField: 'attach',
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchAccountList({
+    required String productId,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.fetchAccountList,
+      body: _withObfuscatedFields(
+        {'silken': productId},
+        {
+          'whispery': _randomObfuscatedValue(),
+          'metalware': _randomObfuscatedValue(),
+        },
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> changeBankCard({
+    required String orderNo,
+    required String bindCardId,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.changeBankCard,
+      body: _withObfuscatedFields(
+        {'slynesses': orderNo, 'reads': bindCardId},
+        {'outyielded': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> fetchRetainPopup({
+    required String popupType,
+    required String productId,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.fetchRetainPopup,
+      body: _withObfuscatedFields(
+        {'flagellum': popupType, 'fellest': productId},
+        {'muraenid': _randomObfuscatedValue()},
+      ),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> reportTongdun({
+    String livenessId = '',
+    String requestId = '',
+    String resultCode = '',
+    required String result,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.reportTongdun,
+      body: {
+        'rhenium': livenessId,
+        'derivative': requestId,
+        'sirras': resultCode,
+        'earphone': result,
+      },
     );
   }
 

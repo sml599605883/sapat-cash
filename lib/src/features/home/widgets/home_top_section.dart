@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sapat_cash/src/core/push/app_push.dart';
 
 import '../../../core/layout/screen.dart';
 import '../home_models.dart';
@@ -31,53 +32,65 @@ class HomeTopSection extends StatelessWidget {
           stops: [0, 0.45, 1],
         ),
       ),
-      child: Column(
-        children: [
-          const SafeArea(bottom: false, child: SizedBox()),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
-            child: const _WelcomeHeader(),
-          ),
-          SizedBox(height: screen.dp(18)),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
-            child: _TopCard(card: card, icon: icon),
-          ),
-          if (hasAuthProgress)
-            Transform.translate(
-              offset: Offset(0, -screen.dp(24)),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
-                child: _UnlockedLimitCard(
-                  card: card!,
-                  lineImageAsset:
-                      'assets/image/home/home_progress_connector.png',
+      child: GestureDetector(
+        onTap: () =>
+            AppPush.clickApply(context, productId: card?.productId ?? ''),
+        child: Column(
+          children: [
+            const SafeArea(bottom: false, child: SizedBox()),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
+              child: const _WelcomeHeader(),
+            ),
+            SizedBox(height: screen.dp(18)),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screen.dp(16)),
+              child: _TopCard(card: card, icon: icon),
+            ),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(vertical: screen.dp(16)),
+              constraints: hasAuthProgress
+                  ? null
+                  : BoxConstraints(minHeight: screen.dp(66)),
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(
+                    'assets/image/home/home_card_top_strip.png',
+                  ),
+                  fit: BoxFit.fitWidth,
+                  alignment: Alignment.bottomCenter,
                 ),
               ),
-            ),
-          Container(
-            width: double.infinity,
-            height: screen.dp(66),
-            padding: EdgeInsets.symmetric(vertical: screen.dp(16)),
-            alignment: Alignment.topCenter,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/image/home/home_card_top_strip.png'),
-                fit: BoxFit.fitWidth,
-                alignment: Alignment.bottomCenter,
+              child: Stack(
+                children: [
+                  Container(
+                    alignment: Alignment.center,
+                    child: Text(
+                      slogan ?? '',
+                      style: TextStyle(
+                        color: const Color(0xFF9A7F65),
+                        fontSize: screen.dp(12),
+                        height: 16 / 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (hasAuthProgress)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: screen.dp(16),
+                        right: screen.dp(16),
+                        bottom: screen.dp(24),
+                        top: screen.dp(7),
+                      ),
+                      child: _UnlockedLimitCard(card: card!),
+                    ),
+                ],
               ),
             ),
-            child: Text(
-              slogan ?? '',
-              style: TextStyle(
-                color: const Color(0xFF9A7F65),
-                fontSize: screen.dp(12),
-                height: 16 / 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -102,140 +115,109 @@ class _TopCard extends StatelessWidget {
     final applyText = card?.buttonText?.trim();
     final iconUrl = icon?.imageUrl.trim();
     final hasIconUrl = iconUrl != null && iconUrl.isNotEmpty;
-    final hasAuthProgress = card?.authProgress.isNotEmpty == true;
-    final cardBottomPadding = hasAuthProgress ? 24.0 : 0.0;
+    // final hasAuthProgress = card?.authProgress.isNotEmpty == true;
 
-    return Container(
-      padding: EdgeInsets.only(bottom: screen.dp(cardBottomPadding)),
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            constraints: BoxConstraints(minHeight: screen.dp(275)),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(screen.dp(14)),
-              image: const DecorationImage(
-                image: AssetImage(
-                  'assets/image/home/home_gradient_background.png',
-                ),
-                fit: BoxFit.fill,
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          constraints: BoxConstraints(minHeight: screen.dp(275)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(screen.dp(14)),
+            image: const DecorationImage(
+              image: AssetImage(
+                'assets/image/home/home_gradient_background.png',
               ),
+              fit: BoxFit.fill,
             ),
-            child: Padding(
-              padding: EdgeInsets.only(bottom: screen.dp(24)),
-              child: Column(
+          ),
+          child: Column(
+            children: [
+              SizedBox(height: screen.dp(12)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: screen.dp(12)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(screen.dp(8)),
-                        child: SizedBox(
-                          width: screen.dp(28),
-                          height: screen.dp(28),
-                          child: hasIconUrl
-                              ? Image.network(
-                                  iconUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      _buildFallbackIcon(screen),
-                                )
-                              : _buildFallbackIcon(screen),
-                        ),
-                      ),
-                      SizedBox(width: screen.dp(10)),
-                      Text(
-                        appName?.isNotEmpty == true ? appName! : 'App Name',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: screen.dp(14),
-                          height: 16 / 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (hasAuthProgress) ...[
-                    SizedBox(height: screen.dp(18)),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: screen.dp(12)),
-                      child: const Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Colors.white,
-                      ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(screen.dp(8)),
+                    child: SizedBox(
+                      width: screen.dp(28),
+                      height: screen.dp(28),
+                      child: hasIconUrl
+                          ? Image.network(
+                              iconUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildFallbackIcon(screen),
+                            )
+                          : _buildFallbackIcon(screen),
                     ),
-                  ] else ...[
-                    SizedBox(height: screen.dp(40)),
-                  ],
-                  SizedBox(height: screen.dp(hasAuthProgress ? 24 : 0)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _MetricItem(
-                        icon: 'assets/image/home/home_calendar_icon.png',
-                        value: loanTerm?.isNotEmpty == true
-                            ? loanTerm!
-                            : '180 Days',
-                        label: loanTermText?.isNotEmpty == true
-                            ? loanTermText!
-                            : 'Loan terms',
-                      ),
-                      SizedBox(width: screen.dp(68)),
-                      _MetricItem(
-                        icon: 'assets/image/home/home_percent_icon.png',
-                        value: interestRate?.isNotEmpty == true
-                            ? interestRate!
-                            : '≤0.5% / Day',
-                        label: interestRateText?.isNotEmpty == true
-                            ? interestRateText!
-                            : 'Interest rate',
-                      ),
-                    ],
                   ),
-                  SizedBox(height: screen.dp(36)),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(width: screen.dp(31)),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              amountText?.isNotEmpty == true
-                                  ? amountText!
-                                  : 'Available up to',
-                              style: TextStyle(
-                                color: HomeTopSection._lightText,
-                                fontSize: screen.dp(14),
-                                height: 18 / 14,
-                              ),
-                            ),
-                            SizedBox(height: screen.dp(3)),
-                            Text(
-                              amount?.isNotEmpty == true ? amount! : '₱60,000',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: screen.dp(36),
-                                height: 44 / 36,
-                                fontFamily: 'Helvetica',
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _ApplyButton(text: applyText),
-                    ],
+                  SizedBox(width: screen.dp(10)),
+                  Text(
+                    appName ?? '',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: screen.dp(14),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
-            ),
+              SizedBox(height: screen.dp(40)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _MetricItem(
+                    icon: 'assets/image/home/home_calendar_icon.png',
+                    value: loanTerm ?? '',
+                    label: loanTermText ?? '',
+                  ),
+                  SizedBox(width: screen.dp(68)),
+                  _MetricItem(
+                    icon: 'assets/image/home/home_percent_icon.png',
+                    value: interestRate ?? '',
+                    label: interestRateText ?? '',
+                  ),
+                ],
+              ),
+              SizedBox(height: screen.dp(36)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(width: screen.dp(31)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          amountText ?? '',
+                          style: TextStyle(
+                            color: HomeTopSection._lightText,
+                            fontSize: screen.dp(14),
+                            height: 18 / 14,
+                          ),
+                        ),
+                        SizedBox(height: screen.dp(3)),
+                        Text(
+                          amount?.isNotEmpty == true ? amount! : '₱60,000',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screen.dp(36),
+                            height: 44 / 36,
+                            fontFamily: 'Helvetica',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _ApplyButton(text: applyText),
+                ],
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -253,15 +235,21 @@ class _TopCard extends StatelessWidget {
 }
 
 class _UnlockedLimitCard extends StatelessWidget {
-  const _UnlockedLimitCard({required this.card, required this.lineImageAsset});
+  const _UnlockedLimitCard({required this.card});
+
+  static const double _cardDesignWidth = 343;
+  static const double _lineDesignWidth = 319;
+  static const double _lineDesignHeight = 68;
 
   final HomeSectionItem card;
-  final String lineImageAsset;
 
   @override
   Widget build(BuildContext context) {
     final screen = context.screen;
     final items = card.authProgress;
+    final cardWidth = screen.width - screen.dp(84);
+    final lineWidth = cardWidth * (_lineDesignWidth / _cardDesignWidth);
+    final lineHeight = lineWidth * (_lineDesignHeight / _lineDesignWidth);
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -272,82 +260,68 @@ class _UnlockedLimitCard extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.topCenter,
         children: [
-          Positioned(
-            top: screen.dp(-70),
-            child: Image.asset(
-              lineImageAsset,
-              width: screen.dp(319),
-              height: screen.dp(68),
-              fit: BoxFit.fill,
+          Container(
+            width: double.infinity,
+            constraints: BoxConstraints(minHeight: screen.dp(94)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(screen.dp(14)),
+              border: Border.all(
+                color: HomeTopSection._darkText,
+                width: screen.dp(2),
+              ),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              screen.dp(14),
+              screen.dp(8),
+              screen.dp(14),
+              screen.dp(14),
+            ),
+            child: Column(
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: TextStyle(
+                      color: HomeTopSection._darkText,
+                      fontSize: screen.dp(14),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    children: const [
+                      TextSpan(text: 'My unlocked limit('),
+                      TextSpan(
+                        text: '₱',
+                        style: TextStyle(fontFamily: 'Helvetica'),
+                      ),
+                      TextSpan(text: ')'),
+                    ],
+                  ),
+                ),
+                SizedBox(height: screen.dp(16)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  spacing: screen.dp(7),
+                  children: items
+                      .map(
+                        (item) =>
+                            Expanded(child: _UnlockedLimitTag(item: item)),
+                      )
+                      .toList(),
+                ),
+              ],
             ),
           ),
           Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: Container(
-              constraints: BoxConstraints(minHeight: screen.dp(94)),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(screen.dp(14)),
-                border: Border.all(
-                  color: HomeTopSection._darkText,
-                  width: screen.dp(2),
-                ),
-              ),
-              padding: EdgeInsets.fromLTRB(
-                screen.dp(14),
-                screen.dp(8),
-                screen.dp(14),
-                screen.dp(14),
-              ),
-              child: Column(
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      style: TextStyle(
-                        color: HomeTopSection._darkText,
-                        fontSize: screen.dp(14),
-                        height: 16 / 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      children: const [
-                        TextSpan(text: 'My unlocked limit('),
-                        TextSpan(
-                          text: '₱',
-                          style: TextStyle(fontFamily: 'Helvetica'),
-                        ),
-                        TextSpan(text: ')'),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: screen.dp(16)),
-                  Wrap(
-                    spacing: screen.dp(8),
-                    runSpacing: screen.dp(8),
-                    children: items
-                        .map(
-                          (item) => SizedBox(
-                            width: _tagWidth(screen, items.length),
-                            child: _UnlockedLimitTag(item: item),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ),
+            top: screen.dp(-48),
+            child: Image.asset(
+              'assets/image/home/home_progress_connector.png',
+              width: lineWidth,
+              height: lineHeight,
+              fit: BoxFit.fill,
             ),
           ),
         ],
       ),
     );
-  }
-
-  double _tagWidth(ScreenData screen, int count) {
-    final maxRowCount = count > 4 ? 4 : (count <= 0 ? 1 : count);
-    final totalSpacing = screen.dp((maxRowCount - 1) * 8);
-    final contentWidth = screen.dp(343 - 28);
-    return (contentWidth - totalSpacing) / maxRowCount;
   }
 }
 
@@ -481,7 +455,7 @@ class _ApplyButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            text?.isNotEmpty == true ? text! : 'Apply Now',
+            text ?? '',
             style: TextStyle(
               color: HomeTopSection._darkText,
               fontSize: screen.dp(14),

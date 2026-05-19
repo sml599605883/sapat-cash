@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
+import '../../core/push/route_names.dart';
 import '../main_tab/main_tab_controller.dart';
 import 'home_models.dart';
 import 'widgets/home_promo_banner.dart';
@@ -12,6 +13,8 @@ import 'widgets/home_top_section.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  static const routeName = RouteNames.home;
 
   @override
   State<HomePage> createState() => _HomePageState();

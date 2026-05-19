@@ -1,22 +1,141 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/app.dart';
+import '../../core/network/api/api_client.dart';
+import '../../core/network/core/business_exception.dart';
+import '../../core/network/core/error_message_adapter.dart';
+import '../../features/product/product_detail_model.dart';
 import '../../features/auth/login_page.dart';
+import '../../features/auth/auth_controller.dart';
 import '../../features/main_tab/main_tab_controller.dart';
 import '../../features/mine/account_page.dart';
+import '../../features/verification/pages/face_verification_page.dart';
+import '../../features/verification/pages/identity_verification_page.dart';
+import '../../features/verification/pages/contact_information_page.dart';
+import '../../features/verification/pages/bind_card_page.dart';
+import '../../features/verification/pages/personal_information_page.dart';
+import '../../features/verification/pages/work_information_page.dart';
+import 'route_names.dart';
 
 final class AppPush {
   const AppPush._();
 
-  static Future<T?> push<T>(BuildContext context, {required Widget page}) {
-    return pushWithNavigator<T>(Navigator.of(context), page: page);
+  static final NavigatorObserver navigatorObserver = _AppPushRouteObserver();
+
+  // Centralized page push entry. Default to the project's iOS-style slide route.
+  static Future<T?> push<T>(
+    BuildContext context, {
+    required Widget page,
+    String? routeName,
+  }) {
+    return pushWithNavigator<T>(
+      Navigator.of(context),
+      page: page,
+      routeName: routeName,
+    );
   }
 
   static Future<T?> pushWithNavigator<T>(
     NavigatorState navigator, {
     required Widget page,
+    String? routeName,
   }) {
-    return navigator.push<T>(_buildPushRoute(page));
+    return navigator.push<T>(_buildPushRoute(page, routeName: routeName));
+  }
+
+  static Future<T?> replace<T, TO>(
+    BuildContext context, {
+    required Widget page,
+    String? routeName,
+    TO? result,
+  }) {
+    return replaceWithNavigator<T, TO>(
+      Navigator.of(context),
+      page: page,
+      routeName: routeName,
+      result: result,
+    );
+  }
+
+  static Future<T?> replaceWithNavigator<T, TO>(
+    NavigatorState navigator, {
+    required Widget page,
+    String? routeName,
+    TO? result,
+  }) {
+    return navigator.pushReplacement<T, TO>(
+      _buildPushRoute(page, routeName: routeName),
+      result: result,
+    );
+  }
+
+  static Future<T?> replaceAll<T>(
+    BuildContext context, {
+    required Widget page,
+    String? routeName,
+  }) {
+    return replaceAllWithNavigator<T>(
+      Navigator.of(context),
+      page: page,
+      routeName: routeName,
+    );
+  }
+
+  static Future<T?> replaceAllWithNavigator<T>(
+    NavigatorState navigator, {
+    required Widget page,
+    String? routeName,
+  }) {
+    return navigator.pushAndRemoveUntil<T>(
+      _buildPushRoute(page, routeName: routeName),
+      (route) => false,
+    );
+  }
+
+  // Push target page first, then prune matched history routes from the stack.
+  // Example: A -> B -> C, call this when navigating C -> D with [B, C],
+  // then returning from D will go straight back to A.
+  static Future<T?> pushAndRemoveRoutes<T>(
+    BuildContext context, {
+    required Widget page,
+    String? routeName,
+    required List<String> removeRouteNames,
+  }) {
+    return pushAndRemoveRoutesWithNavigator<T>(
+      Navigator.of(context),
+      page: page,
+      routeName: routeName,
+      removeRouteNames: removeRouteNames,
+    );
+  }
+
+  static Future<T?> pushAndRemoveRoutesWithNavigator<T>(
+    NavigatorState navigator, {
+    required Widget page,
+    String? routeName,
+    required List<String> removeRouteNames,
+  }) {
+    final normalizedNames = removeRouteNames
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet();
+    final PageRoute<T> route = _buildPushRoute<T>(page, routeName: routeName);
+    final future = navigator.push<T>(route);
+    if (normalizedNames.isEmpty) {
+      return future;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _removeRoutesWithNavigator(
+        navigator,
+        normalizedNames.toList(growable: false),
+        except: route,
+      );
+    });
+    return future;
   }
 
   static Future<T?> pushLogin<T>(BuildContext context) {
@@ -24,30 +143,185 @@ final class AppPush {
   }
 
   static Future<T?> pushLoginWithNavigator<T>(NavigatorState navigator) {
-    return navigator.push<T>(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
+    return pushWithNavigator<T>(
+      navigator,
+      page: const LoginPage(),
+      routeName: RouteNames.login,
     );
   }
 
   static Future<T?> pushAccount<T>(BuildContext context) {
-    return push<T>(context, page: const AccountPage());
+    return push<T>(
+      context,
+      page: const AccountPage(),
+      routeName: RouteNames.account,
+    );
   }
 
   static Future<T?> pushAccountWithNavigator<T>(NavigatorState navigator) {
-    return pushWithNavigator<T>(navigator, page: const AccountPage());
+    return pushWithNavigator<T>(
+      navigator,
+      page: const AccountPage(),
+      routeName: RouteNames.account,
+    );
+  }
+
+  static Future<T?> pushIdentityVerification<T>(
+    BuildContext context, {
+    required String productId,
+  }) {
+    return push<T>(
+      context,
+      page: IdentityVerificationPage(productId: productId),
+      routeName: RouteNames.identityVerification,
+    );
+  }
+
+  static Future<void> productDetail(
+    BuildContext context, {
+    required String productId,
+  }) async {
+    final normalizedProductId = productId.trim();
+    if (normalizedProductId.isEmpty) {
+      return;
+    }
+
+    EasyLoading.show();
+    try {
+      final response = await apiService.productDetail(
+        productId: normalizedProductId,
+      );
+      await _handleProductDetailLanding(response.data);
+    } catch (error) {
+      EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
+    } finally {
+      EasyLoading.dismiss();
+    }
+  }
+
+  static Future<void> clickApply(
+    BuildContext context, {
+    required String productId,
+    String? apiremind,
+  }) async {
+    final normalizedProductId = productId.trim();
+    if (normalizedProductId.isEmpty) {
+      return;
+    }
+
+    final authController = context.read<AuthController>();
+    final navigator = Navigator.of(context);
+    await authController.ensureInitialized();
+    if (!authController.isLoggedIn) {
+      await pushLoginWithNavigator(navigator);
+      return;
+    }
+
+    EasyLoading.show();
+    try {
+      final response = await apiService.clickApply(
+        productId: normalizedProductId,
+        apiremind: apiremind,
+      );
+      final responseJson = response.json;
+      // Backend may return either a direct landing url or a signal to fetch
+      // the next in-app verification step from product detail again.
+      final oreides = responseJson['oreides'].stringOrNull?.trim() ?? '';
+      if (oreides.isNotEmpty) {
+        final opened = await _openLandingUrl(navigator, oreides);
+        if (!opened) {
+          throw const BusinessException('Unable to open link');
+        }
+        return;
+      }
+
+      final earphone = responseJson['earphone'].intOrNull ?? 0;
+      if (earphone == 200) {
+        final detailResponse = await apiService.productDetail(
+          productId: normalizedProductId,
+        );
+        await _handleProductDetailLanding(detailResponse.data);
+        return;
+      }
+
+      final bulldogged = responseJson['bulldogged'].stringOrNull?.trim() ?? '';
+      throw BusinessException(
+        bulldogged.isNotEmpty ? bulldogged : 'Request failed',
+      );
+    } catch (error) {
+      EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
+    } finally {
+      EasyLoading.dismiss();
+    }
   }
 
   static void popToHomeTabbar(BuildContext context, {bool refreshHome = true}) {
     context.read<MainTabController>().switchToHome(refresh: refreshHome);
-    Navigator.of(
-      context,
-    ).popUntil((route) => route.settings.name == Navigator.defaultRouteName);
+    popUntilRouteName(context, RouteNames.mainTab);
   }
 
-  static PageRoute<T> _buildPushRoute<T>(Widget page) {
+  static void pop<T extends Object?>(BuildContext context, [T? result]) {
+    Navigator.of(context).pop<T>(result);
+  }
+
+  static bool canPop(BuildContext context) {
+    return Navigator.of(context).canPop();
+  }
+
+  static void popUntilRouteName(BuildContext context, String routeName) {
+    final normalized = routeName.trim();
+    if (normalized.isEmpty) {
+      return;
+    }
+    Navigator.of(
+      context,
+    ).popUntil((route) => (route.settings.name?.trim() ?? '') == normalized);
+  }
+
+  static void popUntilOneOf(BuildContext context, List<String> routeNames) {
+    final normalizedNames = routeNames
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet();
+    if (normalizedNames.isEmpty) {
+      return;
+    }
+    Navigator.of(context).popUntil(
+      (route) => normalizedNames.contains(route.settings.name?.trim() ?? ''),
+    );
+  }
+
+  static void removeRoutes(BuildContext context, List<String> routeNames) {
+    _removeRoutesWithNavigator(Navigator.of(context), routeNames);
+  }
+
+  // Debug/helper API for checking the tracked navigator stack by route name.
+  static List<String> routeStackNames() {
+    final observer = navigatorObserver;
+    if (observer is! _AppPushRouteObserver) {
+      return const <String>[];
+    }
+    return observer.routes
+        .map((route) => route.settings.name?.trim() ?? '')
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  static String? currentRouteName() {
+    final names = routeStackNames();
+    if (names.isEmpty) {
+      return null;
+    }
+    return names.last;
+  }
+
+  static PageRoute<T> _buildPushRoute<T>(Widget page, {String? routeName}) {
     return PageRouteBuilder<T>(
+      settings: RouteSettings(name: routeName),
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        // Match the product's native-like push feeling:
+        // incoming page slides in from right while current page shifts slightly left.
         final primaryPosition = Tween<Offset>(
           begin: const Offset(1, 0),
           end: Offset.zero,
@@ -63,5 +337,327 @@ final class AppPush {
         );
       },
     );
+  }
+
+  static void _removeRoutesWithNavigator(
+    NavigatorState navigator,
+    List<String> routeNames, {
+    Route<dynamic>? except,
+  }) {
+    final observer = navigatorObserver;
+    if (observer is! _AppPushRouteObserver) {
+      return;
+    }
+    final normalizedNames = routeNames
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet();
+    if (normalizedNames.isEmpty) {
+      return;
+    }
+    final removableRoutes = observer.routes
+        .where(
+          (item) =>
+              item != except &&
+              normalizedNames.contains(item.settings.name?.trim() ?? ''),
+        )
+        .toList(growable: false);
+    for (final item in removableRoutes) {
+      navigator.removeRoute(item);
+    }
+  }
+
+  static Future<void> _handleProductDetailLanding(
+    ProductDetailModel? detail,
+  ) async {
+    if (detail == null || detail.profiteers.isNull()) {
+      debugPrint('product detail profiteers is null, call related api later');
+      return;
+    }
+
+    final derms = detail.profiteers['derms'].stringOrNull?.trim() ?? '';
+    final comment = _profiteersDermsComment(derms);
+    debugPrint('product detail profiteers.derms: $derms ($comment)');
+    // `derms` is the backend-driven next-step marker for the apply flow.
+    if (derms == 'UnravishedOrderable') {
+      final currentContext = SapatCashApp.navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      await pushIdentityVerification(
+        currentContext,
+        productId: detail.productId,
+      );
+      return;
+    }
+
+    if (derms == 'AsunderSabir') {
+      final currentContext = SapatCashApp.navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      EasyLoading.dismiss();
+      await pushAndRemoveRoutes(
+        currentContext,
+        page: const FaceVerificationPage(),
+        routeName: RouteNames.faceVerification,
+        removeRouteNames: const [
+          RouteNames.identityVerification,
+          RouteNames.idUploadDemo,
+          RouteNames.identityUploadSuccess,
+        ],
+      );
+      return;
+    }
+
+    if (derms == 'Liquidating') {
+      final currentContext = SapatCashApp.navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      await pushAndRemoveRoutes(
+        currentContext,
+        page: PersonalInformationPage(productId: detail.productId),
+        routeName: RouteNames.personalInformation,
+        removeRouteNames: const [
+          RouteNames.identityVerification,
+          RouteNames.idUploadDemo,
+          RouteNames.identityUploadSuccess,
+          RouteNames.faceVerification,
+        ],
+      );
+      return;
+    }
+
+    if (derms == 'AtrophyAlertest') {
+      final currentContext = SapatCashApp.navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      await pushAndRemoveRoutes(
+        currentContext,
+        page: WorkInformationPage(productId: detail.productId),
+        routeName: RouteNames.workInformation,
+        removeRouteNames: const [
+          RouteNames.identityVerification,
+          RouteNames.idUploadDemo,
+          RouteNames.identityUploadSuccess,
+          RouteNames.faceVerification,
+          RouteNames.personalInformation,
+        ],
+      );
+      return;
+    }
+
+    if (derms == 'InwardnessCapturer') {
+      final currentContext = SapatCashApp.navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      await pushAndRemoveRoutes(
+        currentContext,
+        page: ContactInformationPage(productId: detail.productId),
+        routeName: RouteNames.contactInformation,
+        removeRouteNames: const [
+          RouteNames.identityVerification,
+          RouteNames.idUploadDemo,
+          RouteNames.identityUploadSuccess,
+          RouteNames.faceVerification,
+          RouteNames.personalInformation,
+          RouteNames.workInformation,
+        ],
+      );
+      return;
+    }
+
+    if (derms == 'Cakewalked') {
+      final currentContext = SapatCashApp.navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      await pushAndRemoveRoutes(
+        currentContext,
+        page: BindCardPage(
+          productId: detail.productId,
+          orderNo: detail.orderNo,
+        ),
+        routeName: RouteNames.bindCard,
+        removeRouteNames: const [
+          RouteNames.identityVerification,
+          RouteNames.idUploadDemo,
+          RouteNames.identityUploadSuccess,
+          RouteNames.faceVerification,
+          RouteNames.personalInformation,
+          RouteNames.workInformation,
+          RouteNames.contactInformation,
+        ],
+      );
+    }
+  }
+
+  static String _profiteersDermsComment(String derms) {
+    switch (derms) {
+      case 'UnravishedOrderable':
+        return '身份认证';
+      case 'AsunderSabir':
+        return '活体认证';
+      case 'Liquidating':
+        return '个人信息';
+      case 'AtrophyAlertest':
+        return '工作信息';
+      case 'InwardnessCapturer':
+        return '紧急联系人';
+      case 'Cakewalked':
+        return '银行卡信息';
+      default:
+        return '未知认证项';
+    }
+  }
+
+  static Future<bool> _openLandingUrl(
+    NavigatorState navigator,
+    String rawUrl,
+  ) async {
+    final url = rawUrl.trim();
+    if (url.isEmpty) {
+      return false;
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      return false;
+    }
+    if (await _handleInternalScheme(navigator, uri)) {
+      return true;
+    }
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  static Future<bool> _handleInternalScheme(
+    NavigatorState navigator,
+    Uri uri,
+  ) async {
+    final normalized = uri.toString().trim().toLowerCase();
+    if (!normalized.contains('ph://sapat-cash/ios')) {
+      return false;
+    }
+
+    final segments = uri.pathSegments
+        .where((segment) => segment.trim().isNotEmpty)
+        .map((segment) => segment.trim().toLowerCase())
+        .toList();
+    if (segments.isEmpty || segments.first != 'ios') {
+      return false;
+    }
+
+    final routeSegments = uri.pathSegments.skip(1).toList();
+    if (routeSegments.isEmpty) {
+      return false;
+    }
+
+    final mainTabController = navigator.context.read<MainTabController>();
+    final target = routeSegments.first.trim();
+
+    switch (target) {
+      case 'PhenologiesCommunicative':
+        mainTabController.switchToHome(refresh: true);
+        return true;
+      case 'TennisGametogenic':
+        await pushAccountWithNavigator(navigator);
+        return true;
+      case 'ConsumeRunny':
+        await pushLoginWithNavigator(navigator);
+        return true;
+      case 'SalpiansDemyelination':
+        final productId = _readProductIdFromUri(uri);
+        if (productId.isEmpty) {
+          return false;
+        }
+        await productDetail(navigator.context, productId: productId);
+        return true;
+      case 'QuixotismVallate':
+        final productId = _readProductIdFromUri(uri);
+        if (productId.isEmpty) {
+          return false;
+        }
+        debugPrint('re-credit productId: $productId');
+        return true;
+      case 'Connoted':
+        final productId = _readProductIdFromUri(uri);
+        if (productId.isEmpty) {
+          return false;
+        }
+        await clickApply(navigator.context, productId: productId);
+        return true;
+      case 'DisavowalsSnuggeries':
+        final balsamic = _readBalsamicFromUri(uri);
+        if (balsamic.isEmpty) {
+          return false;
+        }
+        debugPrint('order list type: $balsamic');
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static String _readProductIdFromUri(Uri uri) {
+    const keys = ['productId', 'silken', 'braciole'];
+    for (final key in keys) {
+      final value = uri.queryParameters[key]?.trim() ?? '';
+      if (value.isNotEmpty) {
+        return value;
+      }
+    }
+    return '';
+  }
+
+  static String _readBalsamicFromUri(Uri uri) {
+    const keys = ['balsamic', 'type'];
+    for (final key in keys) {
+      final value = uri.queryParameters[key]?.trim() ?? '';
+      if (value.isNotEmpty) {
+        return value;
+      }
+    }
+    return '';
+  }
+}
+
+final class _AppPushRouteObserver extends NavigatorObserver {
+  final List<Route<dynamic>> _routes = <Route<dynamic>>[];
+
+  List<Route<dynamic>> get routes => List.unmodifiable(_routes);
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routes.add(route);
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routes.remove(route);
+    super.didPop(route, previousRoute);
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _routes.remove(route);
+    super.didRemove(route, previousRoute);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    final index = oldRoute == null ? -1 : _routes.indexOf(oldRoute);
+    if (index >= 0) {
+      if (newRoute == null) {
+        _routes.removeAt(index);
+      } else {
+        _routes[index] = newRoute;
+      }
+    } else if (newRoute != null) {
+      _routes.add(newRoute);
+    }
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
   }
 }

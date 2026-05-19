@@ -32,6 +32,10 @@
 	<string>Used to report location information for risk control and service delivery.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Used to report location information for risk control and service delivery.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to capture your ID photo for identity verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to select your ID photo for identity verification.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

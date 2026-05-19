@@ -6,11 +6,14 @@ import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../core/push/app_push.dart';
+import '../../core/push/route_names.dart';
 import '../auth/auth_controller.dart';
 import '../main_tab/main_tab_controller.dart';
 
 class MinePage extends StatefulWidget {
   const MinePage({super.key});
+
+  static const routeName = RouteNames.mine;
 
   @override
   State<MinePage> createState() => _MinePageState();

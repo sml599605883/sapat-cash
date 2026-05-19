@@ -1,7 +1,7 @@
 class NetworkConfig {
   NetworkConfig._();
 
-  static const Set<int> successCodes = {0, 200};
+  static const Set<int> successCodes = {0, 200, 20000};
   static const int authExpiredCode = 401;
 
   static const String defaultApiBaseUrl = 'http://47.80.82.124/psc-v1';

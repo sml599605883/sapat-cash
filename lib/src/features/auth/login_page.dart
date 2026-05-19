@@ -6,12 +6,15 @@ import 'package:provider/provider.dart';
 import '../../core/layout/screen.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../core/push/app_push.dart';
+import '../../core/push/route_names.dart';
 import '../../core/widgets/dismiss_keyboard.dart';
 import 'auth_controller.dart';
 import 'login_controller.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
+
+  static const routeName = RouteNames.login;
 
   @override
   Widget build(BuildContext context) {
