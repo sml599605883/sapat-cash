@@ -27,6 +27,18 @@ final class AppPush {
   const AppPush._();
 
   static final NavigatorObserver navigatorObserver = _AppPushRouteObserver();
+  static const List<String> _verificationFlowRouteSequence = <String>[
+    RouteNames.identityVerification,
+    RouteNames.idUploadDemo,
+    RouteNames.identityUploadSuccess,
+    RouteNames.faceVerification,
+    RouteNames.personalInformation,
+    RouteNames.workInformation,
+    RouteNames.contactInformation,
+    RouteNames.bindCard,
+    RouteNames.webView,
+    RouteNames.waitingCredit,
+  ];
 
   // Centralized page push entry. Default to the project's iOS-style slide route.
   static Future<T?> push<T>(
@@ -121,10 +133,7 @@ final class AppPush {
     String? routeName,
     required List<String> removeRouteNames,
   }) {
-    final normalizedNames = removeRouteNames
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet();
+    final normalizedNames = _normalizeRouteNames(removeRouteNames);
     final PageRoute<T> route = _buildPushRoute<T>(page, routeName: routeName);
     final future = navigator.push<T>(route);
     if (normalizedNames.isEmpty) {
@@ -335,10 +344,7 @@ final class AppPush {
   }
 
   static void popUntilOneOf(BuildContext context, List<String> routeNames) {
-    final normalizedNames = routeNames
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet();
+    final normalizedNames = _normalizeRouteNames(routeNames);
     if (normalizedNames.isEmpty) {
       return;
     }
@@ -454,10 +460,7 @@ final class AppPush {
     if (observer is! _AppPushRouteObserver) {
       return;
     }
-    final normalizedNames = routeNames
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet();
+    final normalizedNames = _normalizeRouteNames(routeNames);
     if (normalizedNames.isEmpty) {
       return;
     }
@@ -508,76 +511,41 @@ final class AppPush {
         return;
       case 'AsunderSabir':
         EasyLoading.dismiss();
-        await pushAndRemoveRoutes(
+        await _pushVerificationFlowStep(
           currentContext,
           page: const FaceVerificationPage(),
           routeName: RouteNames.faceVerification,
-          removeRouteNames: const [
-            RouteNames.identityVerification,
-            RouteNames.idUploadDemo,
-            RouteNames.identityUploadSuccess,
-          ],
         );
         return;
       case 'Liquidating':
-        await pushAndRemoveRoutes(
+        await _pushVerificationFlowStep(
           currentContext,
           page: PersonalInformationPage(productId: detail.productId),
           routeName: RouteNames.personalInformation,
-          removeRouteNames: const [
-            RouteNames.identityVerification,
-            RouteNames.idUploadDemo,
-            RouteNames.identityUploadSuccess,
-            RouteNames.faceVerification,
-          ],
         );
         return;
       case 'AtrophyAlertest':
-        await pushAndRemoveRoutes(
+        await _pushVerificationFlowStep(
           currentContext,
           page: WorkInformationPage(productId: detail.productId),
           routeName: RouteNames.workInformation,
-          removeRouteNames: const [
-            RouteNames.identityVerification,
-            RouteNames.idUploadDemo,
-            RouteNames.identityUploadSuccess,
-            RouteNames.faceVerification,
-            RouteNames.personalInformation,
-          ],
         );
         return;
       case 'InwardnessCapturer':
-        await pushAndRemoveRoutes(
+        await _pushVerificationFlowStep(
           currentContext,
           page: ContactInformationPage(productId: detail.productId),
           routeName: RouteNames.contactInformation,
-          removeRouteNames: const [
-            RouteNames.identityVerification,
-            RouteNames.idUploadDemo,
-            RouteNames.identityUploadSuccess,
-            RouteNames.faceVerification,
-            RouteNames.personalInformation,
-            RouteNames.workInformation,
-          ],
         );
         return;
       case 'Cakewalked':
-        await pushAndRemoveRoutes(
+        await _pushVerificationFlowStep(
           currentContext,
           page: BindCardPage(
             productId: detail.productId,
             orderNo: detail.orderNo,
           ),
           routeName: RouteNames.bindCard,
-          removeRouteNames: const [
-            RouteNames.identityVerification,
-            RouteNames.idUploadDemo,
-            RouteNames.identityUploadSuccess,
-            RouteNames.faceVerification,
-            RouteNames.personalInformation,
-            RouteNames.workInformation,
-            RouteNames.contactInformation,
-          ],
         );
         return;
       default:
@@ -623,6 +591,39 @@ final class AppPush {
     return openWebPageWithNavigator(navigator, rawUrl: rawUrl);
   }
 
+  static Future<void> _pushVerificationFlowStep(
+    BuildContext context, {
+    required Widget page,
+    required String routeName,
+  }) {
+    return pushAndRemoveRoutes(
+      context,
+      page: page,
+      routeName: routeName,
+      removeRouteNames: _verificationFlowHistoryBefore(routeName),
+    );
+  }
+
+  static List<String> _verificationFlowHistoryBefore(String routeName) {
+    final normalizedRouteName = routeName.trim();
+    final routeIndex = _verificationFlowRouteSequence.indexOf(
+      normalizedRouteName,
+    );
+    if (routeIndex <= 0) {
+      return const <String>[];
+    }
+    return _verificationFlowRouteSequence
+        .take(routeIndex)
+        .toList(growable: false);
+  }
+
+  static Set<String> _normalizeRouteNames(Iterable<String> routeNames) {
+    return routeNames
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet();
+  }
+
   static Future<bool> openWebPage(
     BuildContext context, {
     required String rawUrl,
@@ -647,11 +648,7 @@ final class AppPush {
     required String rawUrl,
     String? title,
   }) async {
-    final url = rawUrl.trim();
-    if (url.isEmpty) {
-      return false;
-    }
-    final uri = Uri.tryParse(url);
+    final uri = _tryParseUri(rawUrl);
     if (uri == null) {
       return false;
     }
@@ -695,20 +692,11 @@ final class AppPush {
     NavigatorState navigator,
     Uri uri,
   ) async {
-    final normalized = uri.toString().trim().toLowerCase();
-    if (!normalized.contains('ph://sapat-cash/ios')) {
+    if (!_isInternalAppUri(uri)) {
       return false;
     }
 
-    final segments = uri.pathSegments
-        .where((segment) => segment.trim().isNotEmpty)
-        .map((segment) => segment.trim().toLowerCase())
-        .toList();
-    if (segments.isEmpty || segments.first != 'ios') {
-      return false;
-    }
-
-    final routeSegments = uri.pathSegments.skip(1).toList();
+    final routeSegments = _normalizedPathSegments(uri).skip(1).toList();
     if (routeSegments.isEmpty) {
       return false;
     }
@@ -727,27 +715,30 @@ final class AppPush {
         await pushLoginWithNavigator(navigator);
         return true;
       case 'SalpiansDemyelination':
-        final productId = _readProductIdFromUri(uri);
-        if (productId.isEmpty) {
-          return false;
-        }
-        await productDetail(navigator.context, productId: productId);
-        return true;
+        return _handleInternalProductRoute(
+          navigator,
+          uri,
+          action: (productId) {
+            return productDetail(navigator.context, productId: productId);
+          },
+        );
       case 'QuixotismVallate':
-        final productId = _readProductIdFromUri(uri);
-        if (productId.isEmpty) {
-          return false;
-        }
-        EasyLoading.dismiss();
-        await pushWaitingCredit(navigator.context, productId: productId);
-        return true;
+        return _handleInternalProductRoute(
+          navigator,
+          uri,
+          beforeAction: EasyLoading.dismiss,
+          action: (productId) {
+            return pushWaitingCredit(navigator.context, productId: productId);
+          },
+        );
       case 'Connoted':
-        final productId = _readProductIdFromUri(uri);
-        if (productId.isEmpty) {
-          return false;
-        }
-        await clickApply(navigator.context, productId: productId);
-        return true;
+        return _handleInternalProductRoute(
+          navigator,
+          uri,
+          action: (productId) {
+            return clickApply(navigator.context, productId: productId);
+          },
+        );
       case 'DisavowalsSnuggeries':
         final balsamic = _readBalsamicFromUri(uri);
         if (balsamic.isEmpty) {
@@ -760,14 +751,27 @@ final class AppPush {
     }
   }
 
+  static Future<bool> _handleInternalProductRoute(
+    NavigatorState navigator,
+    Uri uri, {
+    VoidCallback? beforeAction,
+    required Future<void> Function(String productId) action,
+  }) async {
+    final productId = _readProductIdFromUri(uri);
+    if (productId.isEmpty) {
+      return false;
+    }
+    beforeAction?.call();
+    await action(productId);
+    return true;
+  }
+
   static String _readProductIdFromUri(Uri uri) {
     const keys = ['productId', 'silken', 'fellest'];
 
-    for (final key in keys) {
-      final value = uri.queryParameters[key]?.trim() ?? '';
-      if (value.isNotEmpty) {
-        return value;
-      }
+    final directValue = _readFirstNonEmptyQueryValue(uri, keys);
+    if (directValue.isNotEmpty) {
+      return directValue;
     }
 
     final fragment = uri.fragment.trim();
@@ -776,11 +780,9 @@ final class AppPush {
         fragment.contains('?') ? fragment : '/?$fragment',
       );
       if (fragmentUri != null) {
-        for (final key in keys) {
-          final value = fragmentUri.queryParameters[key]?.trim() ?? '';
-          if (value.isNotEmpty) {
-            return value;
-          }
+        final fragmentValue = _readFirstNonEmptyQueryValue(fragmentUri, keys);
+        if (fragmentValue.isNotEmpty) {
+          return fragmentValue;
         }
       }
     }
@@ -851,6 +853,40 @@ final class AppPush {
 
   static String _readBalsamicFromUri(Uri uri) {
     const keys = ['balsamic', 'type'];
+    return _readFirstNonEmptyQueryValue(uri, keys);
+  }
+
+  static bool _shouldOpenInWebView(Uri uri) {
+    final scheme = uri.scheme.trim().toLowerCase();
+    return scheme == 'http' || scheme == 'https';
+  }
+
+  static Uri? _tryParseUri(String rawUrl) {
+    final normalizedUrl = rawUrl.trim();
+    if (normalizedUrl.isEmpty) {
+      return null;
+    }
+    return Uri.tryParse(normalizedUrl);
+  }
+
+  static bool _isInternalAppUri(Uri uri) {
+    final scheme = uri.scheme.trim().toLowerCase();
+    final host = uri.host.trim().toLowerCase();
+    final pathSegments = _normalizedPathSegments(uri);
+    return scheme == 'ph' &&
+        host == 'sapat-cash' &&
+        pathSegments.isNotEmpty &&
+        pathSegments.first.toLowerCase() == 'ios';
+  }
+
+  static List<String> _normalizedPathSegments(Uri uri) {
+    return uri.pathSegments
+        .map((segment) => segment.trim())
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  static String _readFirstNonEmptyQueryValue(Uri uri, List<String> keys) {
     for (final key in keys) {
       final value = uri.queryParameters[key]?.trim() ?? '';
       if (value.isNotEmpty) {
@@ -858,11 +894,6 @@ final class AppPush {
       }
     }
     return '';
-  }
-
-  static bool _shouldOpenInWebView(Uri uri) {
-    final scheme = uri.scheme.trim().toLowerCase();
-    return scheme == 'http' || scheme == 'https';
   }
 }
 
