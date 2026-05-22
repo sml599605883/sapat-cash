@@ -104,6 +104,22 @@ class NetworkManager {
     return post(path, body: {'payload': payload});
   }
 
+  Future<Map<String, dynamic>> resolveCommonParams() {
+    return _resolveCommonParams();
+  }
+
+  Future<Map<String, dynamic>> resolveMappedCommonParams({
+    required String path,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final commonParams = await _resolveCommonParams();
+    return _mapCommonParams(
+      commonParams,
+      path: path,
+      queryParameters: queryParameters,
+    );
+  }
+
   Future<NetworkResponse<dynamic>> _request({
     required RequestMethod method,
     required String path,
@@ -113,21 +129,11 @@ class NetworkManager {
     String fileField = 'file',
   }) async {
     final commonParams = await _resolveCommonParams();
-    final mappedCommonParams = _mapCommonParams(commonParams);
-
-    final query = <String, dynamic>{
-      ...mappedCommonParams,
-      NetworkConfig.pathFieldKey: path,
-    };
-    query[NetworkConfig.signatureFieldKey] = SignatureHelper.generate(
-      params: query,
-      secret: NetworkConfig.signatureSecret,
+    final query = _mapCommonParams(
+      commonParams,
+      path: path,
+      queryParameters: queryParameters,
     );
-    query[NetworkConfig.endpointRandomFieldKey] =
-        SignatureHelper.randomDigits();
-    query.addAll(queryParameters ?? {});
-
-    query.remove(NetworkConfig.pathFieldKey);
 
     late final Response<dynamic> response;
 
@@ -178,12 +184,29 @@ class NetworkManager {
     return staticCommonParamProvider.getCommonParams();
   }
 
-  Map<String, dynamic> _mapCommonParams(Map<String, dynamic> source) {
+  Map<String, dynamic> _mapCommonParams(
+    Map<String, dynamic> source, {
+    required String path,
+    Map<String, dynamic>? queryParameters,
+  }) {
     final mapped = <String, dynamic>{};
     for (final entry in source.entries) {
       mapped[CommonParamKeys.mapKey(entry.key)] = entry.value;
     }
-    return mapped;
+
+    final query = <String, dynamic>{
+      ...mapped,
+      NetworkConfig.pathFieldKey: path,
+    };
+    query[NetworkConfig.signatureFieldKey] = SignatureHelper.generate(
+      params: query,
+      secret: NetworkConfig.signatureSecret,
+    );
+    query[NetworkConfig.endpointRandomFieldKey] =
+        SignatureHelper.randomDigits();
+    query.addAll(queryParameters ?? const <String, dynamic>{});
+    query.remove(NetworkConfig.pathFieldKey);
+    return query;
   }
 
   Future<NetworkResponse<dynamic>> _handleResponse(dynamic raw) async {

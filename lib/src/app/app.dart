@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:provider/provider.dart';
 
+import '../core/network/network_status_controller.dart';
 import '../core/push/app_push.dart';
+import '../features/network/offline_page.dart';
 import '../features/main_tab_page.dart';
 import 'theme/app_theme.dart';
 
@@ -32,9 +35,17 @@ class SapatCashApp extends StatelessWidget {
       builder: (context, child) {
         final easyLoadingBuilder = EasyLoading.init();
         final mediaQuery = MediaQuery.of(context);
+        final isOffline = context.select<NetworkStatusController, bool>(
+          (controller) => controller.isOffline,
+        );
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
-          child: easyLoadingBuilder(context, child),
+          child: Stack(
+            children: [
+              easyLoadingBuilder(context, child),
+              if (isOffline) const Positioned.fill(child: OfflinePage()),
+            ],
+          ),
         );
       },
     );

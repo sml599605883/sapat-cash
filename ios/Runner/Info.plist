@@ -36,6 +36,11 @@
 	<string>Used to capture your ID photo for identity verification.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Used to select your ID photo for identity verification.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

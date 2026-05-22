@@ -8,6 +8,7 @@ import '../../core/network/api/api_client.dart';
 import '../../core/network/core/business_exception.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../features/web/webview_page.dart';
+import '../../features/common/retain_popup_dialog.dart';
 import '../../features/product/product_detail_model.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/auth_controller.dart';
@@ -348,6 +349,56 @@ final class AppPush {
 
   static void removeRoutes(BuildContext context, List<String> routeNames) {
     _removeRoutesWithNavigator(Navigator.of(context), routeNames);
+  }
+
+  static Future<void> showRetainPopupThen(
+    BuildContext context, {
+    required String productId,
+    required String popupType,
+    required VoidCallback onGoBack,
+  }) async {
+    final normalizedProductId = productId.trim();
+    if (normalizedProductId.isEmpty) {
+      onGoBack();
+      return;
+    }
+
+    try {
+      final response = await apiService.fetchRetainPopup(
+        popupType: popupType,
+        productId: normalizedProductId,
+      );
+      final haem = response.json['haem'];
+      final imageUrl = haem['oreides'].stringValue.trim();
+      if (imageUrl.isEmpty) {
+        onGoBack();
+        return;
+      }
+
+      if (!context.mounted) {
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: const Color(0x80000000),
+        builder: (dialogContext) {
+          return RetainPopupDialog(
+            imageUrl: imageUrl,
+            onGoBack: () {
+              Navigator.of(dialogContext).pop();
+              onGoBack();
+            },
+            onGetFunds: () {
+              Navigator.of(dialogContext).pop();
+            },
+          );
+        },
+      );
+    } catch (_) {
+      onGoBack();
+    }
   }
 
   // Debug/helper API for checking the tracked navigator stack by route name.
@@ -710,7 +761,7 @@ final class AppPush {
   }
 
   static String _readProductIdFromUri(Uri uri) {
-    const keys = ['productId', 'silken', 'braciole'];
+    const keys = ['productId', 'silken', 'fellest'];
 
     for (final key in keys) {
       final value = uri.queryParameters[key]?.trim() ?? '';
@@ -738,6 +789,60 @@ final class AppPush {
     for (final segment in pathSegments) {
       if (segment.isNotEmpty && !segment.contains('=')) {
         return segment;
+      }
+    }
+
+    return '';
+  }
+
+  static String readProductIdFromUrl(String rawUrl) {
+    final normalizedUrl = rawUrl.trim();
+    if (normalizedUrl.isEmpty) {
+      return '';
+    }
+    final uri = Uri.tryParse(normalizedUrl);
+    if (uri != null) {
+      final directProductId = _readProductIdFromUri(uri);
+      if (directProductId.isNotEmpty) {
+        return directProductId;
+      }
+
+      final fragment = uri.fragment.trim();
+      if (fragment.isNotEmpty) {
+        final fragmentProductId = readProductIdFromUrl(fragment);
+        if (fragmentProductId.isNotEmpty) {
+          return fragmentProductId;
+        }
+      }
+    }
+
+    const keys = ['productId', 'silken', 'braciole', 'fellest'];
+    for (final key in keys) {
+      final patterns = ['?$key=', '&$key=', '#$key='];
+      for (final pattern in patterns) {
+        final start = normalizedUrl.indexOf(pattern);
+        if (start < 0) {
+          continue;
+        }
+        final valueStart = start + pattern.length;
+        final tail = normalizedUrl.substring(valueStart);
+        var nextSeparatorIndex = -1;
+        for (final separator in ['&', '#', '/']) {
+          final separatorIndex = tail.indexOf(separator);
+          if (separatorIndex < 0) {
+            continue;
+          }
+          if (nextSeparatorIndex < 0 || separatorIndex < nextSeparatorIndex) {
+            nextSeparatorIndex = separatorIndex;
+          }
+        }
+        final rawValue = nextSeparatorIndex >= 0
+            ? tail.substring(0, nextSeparatorIndex)
+            : tail;
+        final decodedValue = Uri.decodeComponent(rawValue).trim();
+        if (decodedValue.isNotEmpty) {
+          return decodedValue;
+        }
       }
     }
 

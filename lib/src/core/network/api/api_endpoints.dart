@@ -16,6 +16,7 @@ class ApiEndpoints {
   /// 5.用户&订单相关
   static const fetchOrderLandingUrl = '/postins/polarizable';
   static const fetchOrderList = '/postins/isoprenalines';
+  static const confirmRetryOrder = '/postins/kingfishes';
 
   /// 2.app相关
   static const fetchAppHome = '/postins/evaginate';

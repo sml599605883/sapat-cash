@@ -3,6 +3,7 @@ import '../core/network_response.dart';
 import '../protocol/signature_helper.dart';
 import '../../report/report_cache.dart';
 import '../../../features/home/home_models.dart';
+import '../../../features/orders/order_models.dart';
 import '../../../features/product/product_detail_cache.dart';
 import '../../../features/product/product_detail_model.dart';
 import '../../../features/verification/models/address_region_model.dart';
@@ -12,6 +13,8 @@ class ApiService {
   const ApiService(this._networkManager);
 
   final NetworkManager _networkManager;
+
+  NetworkManager get networkManager => _networkManager;
 
   Future<NetworkResponse<dynamic>> reportLocation({
     String? province,
@@ -179,6 +182,21 @@ class ApiService {
       code: response.code,
       message: response.message,
       data: OrderListResponse.fromJson(response.data),
+    );
+  }
+
+  Future<NetworkResponse<dynamic>> confirmRetryOrder({
+    required String orderNo,
+  }) {
+    return _networkManager.post(
+      ApiEndpoints.confirmRetryOrder,
+      body: _withObfuscatedFields(
+        {'unsuspecting': orderNo},
+        {
+          'unfrocking': _randomObfuscatedValue(),
+          'talkathon': _randomObfuscatedValue(),
+        },
+      ),
     );
   }
 

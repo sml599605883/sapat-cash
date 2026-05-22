@@ -28,6 +28,7 @@ class PersonalInformationPage extends StatefulWidget {
 }
 
 class _PersonalInformationPageState extends State<PersonalInformationPage> {
+  static const _retainPopupType = '2';
   PersonalInformationModel? _model;
   final ScrollController _scrollController = ScrollController();
   final Map<int, TextEditingController> _fieldControllers =
@@ -39,6 +40,15 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
       <int, AddressSelectionResult>{};
   late final FocusNode _inactiveFocusNode;
   bool _loading = false;
+
+  Future<void> _handleRetainBack() async {
+    await AppPush.showRetainPopupThen(
+      context,
+      productId: widget.productId,
+      popupType: _retainPopupType,
+      onGoBack: () => AppPush.popToHomeTabbar(context),
+    );
+  }
 
   @override
   void initState() {
@@ -360,7 +370,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
         if (didPop) {
           return;
         }
-        AppPush.popToHomeTabbar(context);
+        _handleRetainBack();
       },
       child: DismissKeyboard(
         child: Scaffold(
@@ -396,7 +406,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Header(onBack: () => AppPush.popToHomeTabbar(context)),
+                    _Header(onBack: _handleRetainBack),
                     SizedBox(height: screen.dp(16)),
                     VerificationHintRow(message: hintMessage),
                     SizedBox(height: screen.dp(22)),

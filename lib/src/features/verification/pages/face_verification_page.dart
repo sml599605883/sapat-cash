@@ -28,7 +28,18 @@ class FaceVerificationPage extends StatefulWidget {
 }
 
 class _FaceVerificationPageState extends State<FaceVerificationPage> {
+  static const _retainPopupType = '1';
   final TrustdeviceProPlugin _trustdeviceProPlugin = TrustdeviceProPlugin();
+
+  Future<void> _handleRetainBack() async {
+    final productId = ProductDetailCache.current?.productId.trim() ?? '';
+    await AppPush.showRetainPopupThen(
+      context,
+      productId: productId,
+      popupType: _retainPopupType,
+      onGoBack: () => AppPush.pop(context),
+    );
+  }
 
   @override
   void initState() {
@@ -287,7 +298,7 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Header(onBack: () => Navigator.of(context).maybePop()),
+              _Header(onBack: _handleRetainBack),
               SizedBox(height: screen.dp(16)),
               VerificationHintRow(message: hintMessage),
               SizedBox(height: screen.dp(37)),

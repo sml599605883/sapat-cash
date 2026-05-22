@@ -22,8 +22,18 @@ class IdentityVerificationPage extends StatefulWidget {
 }
 
 class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
+  static const _retainPopupType = '0';
   IdentityVerificationModel? _model;
   bool _loading = false;
+
+  Future<void> _handleRetainBack() async {
+    await AppPush.showRetainPopupThen(
+      context,
+      productId: widget.productId,
+      popupType: _retainPopupType,
+      onGoBack: () => AppPush.pop(context),
+    );
+  }
 
   @override
   void initState() {
@@ -76,10 +86,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Header(
-                  title: 'ID Verification',
-                  onBack: () => Navigator.of(context).maybePop(),
-                ),
+                _Header(title: 'ID Verification', onBack: _handleRetainBack),
                 SizedBox(height: screen.dp(16)),
                 _TopBanner(),
                 _OptionGroup(

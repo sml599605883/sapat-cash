@@ -29,6 +29,7 @@ class ContactInformationPage extends StatefulWidget {
 }
 
 class _ContactInformationPageState extends State<ContactInformationPage> {
+  static const _retainPopupType = '4';
   ContactInformationModel? _model;
   final ScrollController _scrollController = ScrollController();
   final Map<int, TextEditingController> _fieldControllers =
@@ -40,6 +41,15 @@ class _ContactInformationPageState extends State<ContactInformationPage> {
   bool _loading = false;
   final FlutterNativeContactPicker _contactPicker =
       FlutterNativeContactPicker();
+
+  Future<void> _handleRetainBack() async {
+    await AppPush.showRetainPopupThen(
+      context,
+      productId: widget.productId,
+      popupType: _retainPopupType,
+      onGoBack: () => AppPush.popToHomeTabbar(context),
+    );
+  }
 
   @override
   void initState() {
@@ -414,7 +424,7 @@ class _ContactInformationPageState extends State<ContactInformationPage> {
         if (didPop) {
           return;
         }
-        AppPush.popToHomeTabbar(context);
+        _handleRetainBack();
       },
       child: DismissKeyboard(
         child: Scaffold(
@@ -450,7 +460,7 @@ class _ContactInformationPageState extends State<ContactInformationPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Header(onBack: () => AppPush.popToHomeTabbar(context)),
+                    _Header(onBack: _handleRetainBack),
                     SizedBox(height: screen.dp(16)),
                     VerificationHintRow(message: hintMessage),
                     SizedBox(height: screen.dp(22)),

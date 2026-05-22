@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
+import 'package:sapat_cash/src/core/network/config/network_config.dart';
 
 import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
@@ -9,6 +10,7 @@ import '../../core/push/app_push.dart';
 import '../../core/push/route_names.dart';
 import '../auth/auth_controller.dart';
 import '../main_tab/main_tab_controller.dart';
+import '../orders/order_list_page.dart';
 
 class MinePage extends StatefulWidget {
   const MinePage({super.key});
@@ -193,18 +195,21 @@ class _MineStatsCard extends StatelessWidget {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
+        children: [
           _MineStatItem(
             icon: 'assets/image/mine/mine_icon_1@3x.png',
             label: 'All',
+            type: OrderListType.all,
           ),
           _MineStatItem(
             icon: 'assets/image/mine/mine_icon_2@3x.png',
             label: 'Outstanding',
+            type: OrderListType.outstanding,
           ),
           _MineStatItem(
             icon: 'assets/image/mine/mine_icon_3@3x.png',
             label: 'Settled',
+            type: OrderListType.settled,
           ),
         ],
       ),
@@ -213,27 +218,40 @@ class _MineStatsCard extends StatelessWidget {
 }
 
 class _MineStatItem extends StatelessWidget {
-  const _MineStatItem({required this.icon, required this.label});
+  const _MineStatItem({
+    required this.icon,
+    required this.label,
+    required this.type,
+  });
 
   final String icon;
   final String label;
+  final OrderListType type;
 
   @override
   Widget build(BuildContext context) {
     final screen = context.screen;
 
-    return Column(
-      children: [
-        Image.asset(icon, width: screen.dp(56), height: screen.dp(56)),
-        SizedBox(height: screen.dp(10)),
-        Text(
-          label,
-          style: TextStyle(
-            color: const Color(0xFF331707),
-            fontSize: screen.dp(16),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => AppPush.push(
+        context,
+        page: OrderListPage(initialType: type),
+        routeName: OrderListPage.routeName,
+      ),
+      child: Column(
+        children: [
+          Image.asset(icon, width: screen.dp(56), height: screen.dp(56)),
+          SizedBox(height: screen.dp(10)),
+          Text(
+            label,
+            style: TextStyle(
+              color: const Color(0xFF331707),
+              fontSize: screen.dp(16),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -278,6 +296,10 @@ class _MineMenuList extends StatelessWidget {
         _MineMenuItem(
           icon: 'assets/image/mine/mine_contact_icon.png',
           title: 'Customer service',
+          onTap: () => AppPush.pushWebView(
+            context,
+            url: '${NetworkConfig.defaultWebBaseUrl}/#/OsteotomesLensless',
+          ),
         ),
         SizedBox(height: screen.dp(16)),
         _MineMenuItem(
@@ -289,6 +311,10 @@ class _MineMenuList extends StatelessWidget {
         _MineMenuItem(
           icon: 'assets/image/mine/mine_privacy_icon.png',
           title: 'Privacy',
+          onTap: () => AppPush.pushWebView(
+            context,
+            url: '${NetworkConfig.defaultWebBaseUrl}/#/PhotoreceptionsTressels',
+          ),
         ),
       ],
     );

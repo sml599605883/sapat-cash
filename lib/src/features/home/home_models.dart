@@ -317,20 +317,3 @@ class HomeActionTypeMapper {
     'repay': HomeActionType.repay,
   };
 }
-
-class OrderListResponse {
-  const OrderListResponse({required this.items, required this.page});
-
-  factory OrderListResponse.fromJson(dynamic raw) {
-    final json = Json(raw);
-    return OrderListResponse(
-      items: json['noniron'].listValue
-          .map((item) => HomeSectionItem.fromJson(item))
-          .toList(),
-      page: json['damselfly'].intOrNull ?? 0,
-    );
-  }
-
-  final List<HomeSectionItem> items;
-  final int page;
-}

@@ -132,9 +132,9 @@ class ReportManager {
     required String sceneType,
     required String orderNo,
     required int startTimeSeconds,
-    required int endTimeSeconds,
   }) async {
     try {
+      final endTimeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final snapshot = await ReportNativeBridge.getDeviceSnapshot();
       final location = await _resolveLocationWithCacheFallback();
       final payload = ReportPayloadHelper.buildRiskPayload(

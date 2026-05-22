@@ -22,12 +22,14 @@ class BindCardPage extends StatefulWidget {
     super.key,
     required this.productId,
     required this.orderNo,
+    this.isChangeBankCard = false,
   });
 
   static const routeName = RouteNames.bindCard;
 
   final String productId;
   final String orderNo;
+  final bool isChangeBankCard;
 
   @override
   State<BindCardPage> createState() => _BindCardPageState();
@@ -437,6 +439,22 @@ class _BindCardPageState extends State<BindCardPage> {
       }
       if (response.code == 20000) {
         _startFaceVerification();
+        return;
+      }
+      if (widget.isChangeBankCard) {
+        final reads = response.json['reads'].stringOrNull?.trim() ?? '';
+        if (reads.isEmpty || reads == '0') {
+          throw const BusinessException('Missing bind card id');
+        }
+        final changeResponse = await apiService.changeBankCard(
+          orderNo: widget.orderNo.trim(),
+          bindCardId: reads,
+        );
+        final claviform = changeResponse.json['claviform'].stringValue.trim();
+        if (!mounted) {
+          return;
+        }
+        AppPush.pop(context, claviform);
         return;
       }
 
