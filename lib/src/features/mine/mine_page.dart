@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
-import 'package:sapat_cash/src/core/network/config/network_config.dart';
 
 import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
+import '../../core/network/config/network_config.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../core/push/app_push.dart';
 import '../../core/push/route_names.dart';
 import '../auth/auth_controller.dart';
+import '../common/fetch_popup_handler.dart';
 import '../main_tab/main_tab_controller.dart';
 import '../orders/order_list_page.dart';
 
@@ -24,6 +25,7 @@ class MinePage extends StatefulWidget {
 class _MinePageState extends State<MinePage> {
   int _lastRefreshToken = 0;
   bool _loading = false;
+  bool _popupShowing = false;
 
   @override
   void initState() {
@@ -48,7 +50,15 @@ class _MinePageState extends State<MinePage> {
     _loading = true;
     _lastRefreshToken = refreshToken;
     try {
-      await apiService.fetchPopup(scene: 2);
+      final response = await apiService.fetchPopup(scene: 2);
+      if (!_popupShowing && mounted) {
+        _popupShowing = true;
+        try {
+          await FetchPopupHandler.showIfNeeded(context, json: response.json);
+        } finally {
+          _popupShowing = false;
+        }
+      }
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
     } finally {

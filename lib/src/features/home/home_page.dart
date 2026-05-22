@@ -6,6 +6,7 @@ import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../core/push/route_names.dart';
+import '../common/fetch_popup_handler.dart';
 import '../main_tab/main_tab_controller.dart';
 import 'home_models.dart';
 import 'widgets/home_promo_banner.dart';
@@ -23,6 +24,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _lastRefreshToken = 0;
   bool _loading = false;
+  bool _popupShowing = false;
   AppHomeResponse? _homeData;
 
   @override
@@ -58,6 +60,18 @@ class _HomePageState extends State<HomePage> {
         apiService.fetchPopup(scene: 1),
       ]);
       _homeData = results.first.data as AppHomeResponse?;
+      final popupResponse = results[1];
+      if (!_popupShowing && mounted) {
+        _popupShowing = true;
+        try {
+          await FetchPopupHandler.showIfNeeded(
+            context,
+            json: popupResponse.json,
+          );
+        } finally {
+          _popupShowing = false;
+        }
+      }
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
     } finally {
