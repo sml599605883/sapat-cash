@@ -7,11 +7,13 @@ import '../../app/app.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/business_exception.dart';
 import '../../core/network/core/error_message_adapter.dart';
+import '../../features/web/webview_page.dart';
 import '../../features/product/product_detail_model.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../features/main_tab/main_tab_controller.dart';
 import '../../features/mine/account_page.dart';
+import '../../features/recredit/waiting_credit_page.dart';
 import '../../features/verification/pages/face_verification_page.dart';
 import '../../features/verification/pages/identity_verification_page.dart';
 import '../../features/verification/pages/contact_information_page.dart';
@@ -166,6 +168,30 @@ final class AppPush {
     );
   }
 
+  static Future<T?> pushWebView<T>(
+    BuildContext context, {
+    required String url,
+    String? title,
+  }) {
+    return pushWebViewWithNavigator<T>(
+      Navigator.of(context),
+      url: url,
+      title: title,
+    );
+  }
+
+  static Future<T?> pushWebViewWithNavigator<T>(
+    NavigatorState navigator, {
+    required String url,
+    String? title,
+  }) {
+    return pushWithNavigator<T>(
+      navigator,
+      page: WebViewPage(initialUrl: url, initialTitle: title),
+      routeName: RouteNames.webView,
+    );
+  }
+
   static Future<T?> pushIdentityVerification<T>(
     BuildContext context, {
     required String productId,
@@ -174,6 +200,17 @@ final class AppPush {
       context,
       page: IdentityVerificationPage(productId: productId),
       routeName: RouteNames.identityVerification,
+    );
+  }
+
+  static Future<T?> pushWaitingCredit<T>(
+    BuildContext context, {
+    required String productId,
+  }) {
+    return push<T>(
+      context,
+      page: WaitingCreditPage(productId: productId),
+      routeName: RouteNames.waitingCredit,
     );
   }
 
@@ -261,7 +298,25 @@ final class AppPush {
   }
 
   static void pop<T extends Object?>(BuildContext context, [T? result]) {
-    Navigator.of(context).pop<T>(result);
+    final navigator = Navigator.of(context);
+    if (!navigator.canPop()) {
+      return;
+    }
+    navigator.pop<T>(result);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentContext = SapatCashApp.navigatorKey.currentContext;
+      if (currentContext == null) {
+        return;
+      }
+      final currentRouteName = AppPush.currentRouteName();
+      if (currentRouteName != RouteNames.mainTab) {
+        return;
+      }
+      final mainTabController = currentContext.read<MainTabController>();
+      if (mainTabController.currentIndex == 0) {
+        mainTabController.switchToHome(refresh: true);
+      }
+    });
   }
 
   static bool canPop(BuildContext context) {
@@ -486,6 +541,7 @@ final class AppPush {
     if (currentContext == null) {
       return;
     }
+    final navigator = Navigator.of(currentContext);
 
     final orderNo = detail.orderNo.trim();
     if (orderNo.isEmpty) {
@@ -503,7 +559,7 @@ final class AppPush {
       return;
     }
 
-    final opened = await _openLandingUrl(Navigator.of(currentContext), oreides);
+    final opened = await _openLandingUrl(navigator, oreides);
     if (!opened) {
       throw const BusinessException('Unable to open link');
     }
@@ -513,6 +569,33 @@ final class AppPush {
     NavigatorState navigator,
     String rawUrl,
   ) async {
+    return openWebPageWithNavigator(navigator, rawUrl: rawUrl);
+  }
+
+  static Future<bool> openWebPage(
+    BuildContext context, {
+    required String rawUrl,
+    String? title,
+  }) {
+    return openWebPageWithNavigator(
+      Navigator.of(context),
+      rawUrl: rawUrl,
+      title: title,
+    );
+  }
+
+  static Future<bool> openUrlInBrowser(
+    BuildContext context, {
+    required Uri uri,
+  }) {
+    return openUrlInBrowserWithNavigator(Navigator.of(context), uri: uri);
+  }
+
+  static Future<bool> openWebPageWithNavigator(
+    NavigatorState navigator, {
+    required String rawUrl,
+    String? title,
+  }) async {
     final url = rawUrl.trim();
     if (url.isEmpty) {
       return false;
@@ -521,13 +604,43 @@ final class AppPush {
     if (uri == null) {
       return false;
     }
-    if (await _handleInternalScheme(navigator, uri)) {
+    return openWebUriWithNavigator(navigator, uri: uri, title: title);
+  }
+
+  static Future<bool> openWebUriWithNavigator(
+    NavigatorState navigator, {
+    required Uri uri,
+    String? title,
+  }) async {
+    if (await handleInternalScheme(navigator, uri)) {
       return true;
     }
+    if (_shouldOpenInWebView(uri)) {
+      await pushWebViewWithNavigator(
+        navigator,
+        url: uri.toString(),
+        title: title,
+      );
+      return true;
+    }
+    return openExternalUri(uri);
+  }
+
+  static Future<bool> openUrlInBrowserWithNavigator(
+    NavigatorState navigator, {
+    required Uri uri,
+  }) async {
+    if (await handleInternalScheme(navigator, uri)) {
+      return true;
+    }
+    return openExternalUri(uri);
+  }
+
+  static Future<bool> openExternalUri(Uri uri) {
     return launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  static Future<bool> _handleInternalScheme(
+  static Future<bool> handleInternalScheme(
     NavigatorState navigator,
     Uri uri,
   ) async {
@@ -574,7 +687,8 @@ final class AppPush {
         if (productId.isEmpty) {
           return false;
         }
-        debugPrint('re-credit productId: $productId');
+        EasyLoading.dismiss();
+        await pushWaitingCredit(navigator.context, productId: productId);
         return true;
       case 'Connoted':
         final productId = _readProductIdFromUri(uri);
@@ -597,12 +711,36 @@ final class AppPush {
 
   static String _readProductIdFromUri(Uri uri) {
     const keys = ['productId', 'silken', 'braciole'];
+
     for (final key in keys) {
       final value = uri.queryParameters[key]?.trim() ?? '';
       if (value.isNotEmpty) {
         return value;
       }
     }
+
+    final fragment = uri.fragment.trim();
+    if (fragment.isNotEmpty) {
+      final fragmentUri = Uri.tryParse(
+        fragment.contains('?') ? fragment : '/?$fragment',
+      );
+      if (fragmentUri != null) {
+        for (final key in keys) {
+          final value = fragmentUri.queryParameters[key]?.trim() ?? '';
+          if (value.isNotEmpty) {
+            return value;
+          }
+        }
+      }
+    }
+
+    final pathSegments = uri.pathSegments.reversed.map((item) => item.trim());
+    for (final segment in pathSegments) {
+      if (segment.isNotEmpty && !segment.contains('=')) {
+        return segment;
+      }
+    }
+
     return '';
   }
 
@@ -615,6 +753,11 @@ final class AppPush {
       }
     }
     return '';
+  }
+
+  static bool _shouldOpenInWebView(Uri uri) {
+    final scheme = uri.scheme.trim().toLowerCase();
+    return scheme == 'http' || scheme == 'https';
   }
 }
 

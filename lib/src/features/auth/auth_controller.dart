@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../product/product_detail_cache.dart';
+import '../recredit/recredit_task_coordinator.dart';
 import 'auth_cache.dart';
 
 class AuthController extends ChangeNotifier {
@@ -58,6 +59,7 @@ class AuthController extends ChangeNotifier {
   Future<void> logout() async {
     _loggedIn = false;
     _userToken = '';
+    RecreditTaskCoordinator.instance.stop();
     ProductDetailCache.clear();
     await AuthCache.clear();
     notifyListeners();

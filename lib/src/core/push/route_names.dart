@@ -6,6 +6,9 @@ final class RouteNames {
   static const mine = '/mine';
   static const login = '/auth/login';
   static const account = '/mine/account';
+  static const webView = '/webview';
+  static const orderList = '/orders/list';
+  static const waitingCredit = '/credit/waiting';
   static const identityVerification = '/verification/identity';
   static const idUploadDemo = '/verification/id-upload-demo';
   static const identityUploadSuccess = '/verification/identity-upload-success';
