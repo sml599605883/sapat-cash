@@ -16,12 +16,14 @@ class NetworkCommonParamProvider implements AsyncCommonParamProvider {
     final deviceInfo = DeviceInfoPlugin();
     final snapshot = await ReportNativeBridge.getDeviceSnapshot();
     final sessionId = await ReportCache.getSessionId();
+    String osVersion = '';
     var deviceName = snapshot.deviceName;
     try {
       final iosInfo = await deviceInfo.iosInfo;
       if (iosInfo.modelName.trim().isNotEmpty) {
         deviceName = iosInfo.modelName.trim();
       }
+      osVersion = iosInfo.systemVersion;
     } catch (_) {
       if (deviceName.trim().isEmpty) {
         deviceName = snapshot.model;
@@ -32,7 +34,7 @@ class NetworkCommonParamProvider implements AsyncCommonParamProvider {
       'appVersion': packageInfo.version,
       'deviceName': deviceName,
       'deviceId': snapshot.idfv,
-      'systemVersion': snapshot.osVersion,
+      'systemVersion': osVersion,
       'channel': _channel,
       'sessionId': sessionId,
       'advertisingId': snapshot.idfv,

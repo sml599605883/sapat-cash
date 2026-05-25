@@ -96,9 +96,7 @@ class ReportManager {
         longitude: location.longitude,
         city: location.city,
       );
-      if (location.permissionStatus != 'not_determined') {
-        unawaited(reportDeviceInfo());
-      }
+      unawaited(reportDeviceInfo());
     } catch (error) {
       unawaited(reportDeviceInfo());
       _log(error);

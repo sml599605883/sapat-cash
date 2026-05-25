@@ -1,6 +1,4 @@
 import 'dart:async';
-
-import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/app.dart';
