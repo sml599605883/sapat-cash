@@ -8,6 +8,7 @@ import '../../../core/network/api/api_client.dart';
 import '../../../core/network/core/error_message_adapter.dart';
 import '../../../core/push/app_push.dart';
 import '../../../core/push/route_names.dart';
+import '../../../core/report/report_manager.dart';
 import '../../../core/widgets/dismiss_keyboard.dart';
 import '../../product/product_detail_cache.dart';
 import '../address_cache.dart';
@@ -40,6 +41,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
       <int, AddressSelectionResult>{};
   late final FocusNode _inactiveFocusNode;
   bool _loading = false;
+  late int _scene5StartTimeSeconds;
 
   Future<void> _handleRetainBack() async {
     await AppPush.showRetainPopupThen(
@@ -53,6 +55,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
   @override
   void initState() {
     super.initState();
+    _scene5StartTimeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     _inactiveFocusNode = FocusNode(
       debugLabel: 'personal_information_inactive_focus',
       skipTraversal: true,
@@ -291,6 +294,12 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
         return;
       }
       if (productId.isNotEmpty) {
+        ReportManager.instance.reportRiskBehavior(
+          productId: productId,
+          sceneType: '5',
+          orderNo: ProductDetailCache.current?.orderNo.trim() ?? '',
+          startTimeSeconds: _scene5StartTimeSeconds,
+        );
         await AppPush.productDetail(context, productId: productId);
       }
     } catch (error) {

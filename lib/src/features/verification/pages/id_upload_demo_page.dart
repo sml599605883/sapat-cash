@@ -19,11 +19,16 @@ import 'identity_upload_success_page.dart';
 import '../widgets/verification_hint_row.dart';
 
 class IdUploadDemoPage extends StatefulWidget {
-  const IdUploadDemoPage({super.key, required this.documentType});
+  const IdUploadDemoPage({
+    super.key,
+    required this.documentType,
+    required this.scene3StartTimeSeconds,
+  });
 
   static const routeName = RouteNames.idUploadDemo;
 
   final String documentType;
+  final int scene3StartTimeSeconds;
 
   @override
   State<IdUploadDemoPage> createState() => _IdUploadDemoPageState();
@@ -182,6 +187,7 @@ class _IdUploadDemoPageState extends State<IdUploadDemoPage> {
         page: IdentityUploadSuccessPage(
           result: result,
           documentType: widget.documentType.trim(),
+          scene3StartTimeSeconds: widget.scene3StartTimeSeconds,
         ),
         routeName: RouteNames.identityUploadSuccess,
       );

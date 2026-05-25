@@ -11,6 +11,7 @@ import '../../../core/network/api/api_client.dart';
 import '../../../core/network/core/error_message_adapter.dart';
 import '../../../core/push/app_push.dart';
 import '../../../core/push/route_names.dart';
+import '../../../core/report/report_manager.dart';
 import '../../../core/widgets/dismiss_keyboard.dart';
 import '../../product/product_detail_cache.dart';
 import '../models/bind_card_model.dart';
@@ -50,10 +51,12 @@ class _BindCardPageState extends State<BindCardPage> {
   bool _loading = false;
   int _selectedSectionIndex = 0;
   final TrustdeviceProPlugin _trustdeviceProPlugin = TrustdeviceProPlugin();
+  late int _scene8StartTimeSeconds;
 
   @override
   void initState() {
     super.initState();
+    _scene8StartTimeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     _inactiveFocusNode = FocusNode(
       debugLabel: 'bind_card_inactive_focus',
       skipTraversal: true,
@@ -458,6 +461,14 @@ class _BindCardPageState extends State<BindCardPage> {
         return;
       }
 
+      if (response.code != 20000 && widget.productId.trim().isNotEmpty) {
+        ReportManager.instance.reportRiskBehavior(
+          productId: widget.productId.trim(),
+          sceneType: '8',
+          orderNo: widget.orderNo.trim(),
+          startTimeSeconds: _scene8StartTimeSeconds,
+        );
+      }
       await AppPush.productDetail(context, productId: widget.productId.trim());
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));

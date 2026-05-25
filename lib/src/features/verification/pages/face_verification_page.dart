@@ -14,6 +14,7 @@ import '../../../core/network/core/business_exception.dart';
 import '../../../core/network/core/error_message_adapter.dart';
 import '../../../core/push/app_push.dart';
 import '../../../core/push/route_names.dart';
+import '../../../core/report/report_manager.dart';
 import '../../product/product_detail_cache.dart';
 import 'identity_verification_page.dart';
 import '../widgets/verification_hint_row.dart';
@@ -30,6 +31,7 @@ class FaceVerificationPage extends StatefulWidget {
 class _FaceVerificationPageState extends State<FaceVerificationPage> {
   static const _retainPopupType = '1';
   final TrustdeviceProPlugin _trustdeviceProPlugin = TrustdeviceProPlugin();
+  int? _scene4StartTimeSeconds;
 
   Future<void> _handleRetainBack() async {
     final productId = ProductDetailCache.current?.productId.trim() ?? '';
@@ -62,6 +64,7 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
   }
 
   Future<void> _onNextPressed() async {
+    _scene4StartTimeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final allowed = await _ensureCameraPermission();
     if (!allowed) {
       return;
@@ -155,6 +158,14 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
               livenessId: livenessId,
               license: license,
               image: image,
+            );
+            ReportManager.instance.reportRiskBehavior(
+              productId: productId,
+              sceneType: '4',
+              orderNo: ProductDetailCache.current?.orderNo.trim() ?? '',
+              startTimeSeconds:
+                  _scene4StartTimeSeconds ??
+                  DateTime.now().millisecondsSinceEpoch ~/ 1000,
             );
             await _continueToNextStep(productId);
           },

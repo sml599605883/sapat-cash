@@ -6,6 +6,8 @@ import '../../../core/network/api/api_client.dart';
 import '../../../core/network/core/error_message_adapter.dart';
 import '../../../core/push/app_push.dart';
 import '../../../core/push/route_names.dart';
+import '../../../core/report/report_manager.dart';
+import '../../product/product_detail_cache.dart';
 import '../models/identity_verification_model.dart';
 import 'id_upload_demo_page.dart';
 
@@ -25,6 +27,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   static const _retainPopupType = '0';
   IdentityVerificationModel? _model;
   bool _loading = false;
+  late int _scene2StartTimeSeconds;
 
   Future<void> _handleRetainBack() async {
     await AppPush.showRetainPopupThen(
@@ -38,6 +41,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   @override
   void initState() {
     super.initState();
+    _scene2StartTimeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadData();
@@ -298,9 +302,28 @@ class _OptionTile extends StatelessWidget {
     final screen = context.screen;
     return GestureDetector(
       onTap: () {
+        final productId = ProductDetailCache.current?.productId.trim() ?? '';
+        final orderNo = ProductDetailCache.current?.orderNo.trim() ?? '';
+        final scene3StartTimeSeconds =
+            DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        if (productId.isNotEmpty) {
+          ReportManager.instance.reportRiskBehavior(
+            productId: productId,
+            sceneType: '2',
+            orderNo: orderNo,
+            startTimeSeconds:
+                (context
+                    .findAncestorStateOfType<_IdentityVerificationPageState>()
+                    ?._scene2StartTimeSeconds) ??
+                scene3StartTimeSeconds,
+          );
+        }
         AppPush.push(
           context,
-          page: IdUploadDemoPage(documentType: option.name),
+          page: IdUploadDemoPage(
+            documentType: option.name,
+            scene3StartTimeSeconds: scene3StartTimeSeconds,
+          ),
           routeName: RouteNames.idUploadDemo,
         );
       },

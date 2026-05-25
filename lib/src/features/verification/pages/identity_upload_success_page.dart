@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:sapat_cash/src/core/report/report_manager.dart';
 
 import '../../../core/layout/screen.dart';
 import '../../../core/network/api/api_client.dart';
@@ -16,12 +17,14 @@ class IdentityUploadSuccessPage extends StatefulWidget {
     super.key,
     required this.result,
     required this.documentType,
+    required this.scene3StartTimeSeconds,
   });
 
   static const routeName = RouteNames.identityUploadSuccess;
 
   final IdentityUploadSuccessResult result;
   final String documentType;
+  final int scene3StartTimeSeconds;
 
   @override
   State<IdentityUploadSuccessPage> createState() =>
@@ -226,6 +229,12 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
         return;
       }
       if (productId.isNotEmpty) {
+        ReportManager.instance.reportRiskBehavior(
+          productId: productId,
+          sceneType: '3',
+          orderNo: ProductDetailCache.current?.orderNo.trim() ?? '',
+          startTimeSeconds: widget.scene3StartTimeSeconds,
+        );
         await AppPush.productDetail(context, productId: productId);
       }
     } catch (error) {

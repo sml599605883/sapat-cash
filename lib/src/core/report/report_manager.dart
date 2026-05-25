@@ -4,6 +4,7 @@ import 'package:adjust_sdk/adjust.dart';
 import 'package:adjust_sdk/adjust_config.dart';
 import 'package:adjust_sdk/adjust_session_failure.dart';
 import 'package:adjust_sdk/adjust_session_success.dart';
+import 'package:sapat_cash/src/features/auth/auth_cache.dart';
 
 import '../json/json.dart';
 import '../network/api/api_client.dart';
@@ -71,11 +72,16 @@ class ReportManager {
 
   Future<void> onLoginSuccess() async {
     await ReportCache.setLoginAt(DateTime.now().millisecondsSinceEpoch);
+    unawaited(reportGoogleMarket());
     unawaited(reportNativeLocation());
     unawaited(reportPushToken());
   }
 
   Future<void> reportNativeLocation() async {
+    final userToken = await AuthCache.getUserToken();
+    if (userToken.trim().isEmpty) {
+      return;
+    }
     final location = await getCurrentLocation();
     if (location == null || !location.isValid) {
       return;
@@ -94,6 +100,7 @@ class ReportManager {
         unawaited(reportDeviceInfo());
       }
     } catch (error) {
+      unawaited(reportDeviceInfo());
       _log(error);
     }
   }
@@ -163,13 +170,14 @@ class ReportManager {
   }
 
   Future<void> reportDeviceInfo() async {
-    final lastLoginAt = await ReportCache.getLoginAt();
-    if (lastLoginAt <= 0) {
+    final userToken = await AuthCache.getUserToken();
+    if (userToken.trim().isEmpty) {
       return;
     }
     try {
       final snapshot = await ReportNativeBridge.getDeviceSnapshot();
       final location = await _resolveLocationWithCacheFallback();
+      final lastLoginAt = await ReportCache.getLoginAt();
       final encrypted = await ReportPayloadHelper.buildEncryptedDevicePayload(
         snapshot: snapshot,
         location: location,

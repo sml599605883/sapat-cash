@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:sapat_cash/src/core/report/report_manager.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/app.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/business_exception.dart';
 import '../../core/network/core/error_message_adapter.dart';
-import '../../features/web/webview_page.dart';
+import '../../core/report/report_native_bridge.dart';
+import '../../features/common/permission_prompt_dialog.dart';
 import '../../features/common/retain_popup_dialog.dart';
-import '../../features/product/product_detail_model.dart';
-import '../../features/auth/login_page.dart';
 import '../../features/auth/auth_controller.dart';
+import '../../features/auth/login_page.dart';
 import '../../features/main_tab/main_tab_controller.dart';
 import '../../features/mine/account_page.dart';
+import '../../features/product/product_detail_model.dart';
 import '../../features/recredit/waiting_credit_page.dart';
+import '../../features/verification/pages/bind_card_page.dart';
+import '../../features/verification/pages/contact_information_page.dart';
 import '../../features/verification/pages/face_verification_page.dart';
 import '../../features/verification/pages/identity_verification_page.dart';
-import '../../features/verification/pages/contact_information_page.dart';
-import '../../features/verification/pages/bind_card_page.dart';
 import '../../features/verification/pages/personal_information_page.dart';
 import '../../features/verification/pages/work_information_page.dart';
+import '../../features/web/webview_page.dart';
 import 'route_names.dart';
 
 final class AppPush {
@@ -256,14 +260,19 @@ final class AppPush {
       return;
     }
 
-    final authController = context.read<AuthController>();
     final navigator = Navigator.of(context);
+    final authController = navigator.context.read<AuthController>();
     await authController.ensureInitialized();
     if (!authController.isLoggedIn) {
       await pushLoginWithNavigator(navigator);
       return;
     }
+    final canContinue = await _ensureLocationAccessForApply();
+    if (!canContinue) {
+      return;
+    }
 
+    ReportManager.instance.reportNativeLocation();
     EasyLoading.show();
     try {
       final response = await apiService.clickApply(
@@ -567,11 +576,19 @@ final class AppPush {
       return;
     }
 
+    final scene9StartTimeSeconds =
+        DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final response = await apiService.fetchOrderLandingUrl(
       orderNo: orderNo,
       amount: detail.amount.trim(),
       loanTerm: detail.fieldstone.trim(),
       loanTermType: '${detail.nonbiological}',
+    );
+    ReportManager.instance.reportRiskBehavior(
+      productId: detail.productId.trim(),
+      sceneType: '9',
+      orderNo: orderNo,
+      startTimeSeconds: scene9StartTimeSeconds,
     );
     final oreides = response.json['oreides'].stringOrNull?.trim() ?? '';
     if (oreides.isEmpty) {
@@ -589,6 +606,73 @@ final class AppPush {
     String rawUrl,
   ) async {
     return openWebPageWithNavigator(navigator, rawUrl: rawUrl);
+  }
+
+  static Future<bool> _ensureLocationAccessForApply() async {
+    final location = await ReportNativeBridge.getLocation();
+    if (location != null && location.isValid) {
+      return true;
+    }
+
+    final serviceStatus = await Permission.locationWhenInUse.serviceStatus;
+    if (serviceStatus != ServiceStatus.enabled) {
+      final context = SapatCashApp.navigatorKey.currentContext;
+      if (context == null || !context.mounted) {
+        return false;
+      }
+      final goToService = await _showPermissionPromptDialog(
+        context,
+        title: 'Location service required',
+        content:
+            'Device location service is turned off. Turn it on to improve risk control and service delivery.',
+        cancelText: 'Cancel',
+        confirmText: 'Location Service',
+      );
+      if (goToService) {
+        await openAppSettings();
+        return false;
+      }
+      return true;
+    }
+
+    final context = SapatCashApp.navigatorKey.currentContext;
+    if (context == null || !context.mounted) {
+      return false;
+    }
+    final goToSettings = await _showPermissionPromptDialog(
+      context,
+      title: 'Location permission required',
+      content: 'Please allow location access in Settings to continue.',
+      cancelText: 'Cancel',
+      confirmText: 'Settings',
+    );
+    if (goToSettings) {
+      await openAppSettings();
+      return false;
+    }
+    return true;
+  }
+
+  static Future<bool> _showPermissionPromptDialog(
+    BuildContext context, {
+    required String title,
+    required String content,
+    required String cancelText,
+    required String confirmText,
+  }) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) {
+            return PermissionPromptDialog(
+              title: title,
+              content: content,
+              cancelText: cancelText,
+              confirmText: confirmText,
+            );
+          },
+        ) ??
+        false;
   }
 
   static Future<void> _pushVerificationFlowStep(

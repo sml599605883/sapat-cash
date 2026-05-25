@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
+import 'package:sapat_cash/src/core/report/report_manager.dart';
 
 import '../../core/layout/screen.dart';
 import '../../core/network/core/error_message_adapter.dart';
@@ -37,10 +38,12 @@ class _LoginViewState extends State<_LoginView> {
   late final TextEditingController _codeController;
   late final FocusNode _phoneFocusNode;
   late final FocusNode _codeFocusNode;
+  late int _loginStartTimeSeconds;
 
   @override
   void initState() {
     super.initState();
+    _loginStartTimeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final savedPhone = context.read<AuthController>().phone;
     final displayPhone = savedPhone.startsWith('+63')
         ? savedPhone.substring(3)
@@ -78,6 +81,7 @@ class _LoginViewState extends State<_LoginView> {
     final controller = context.read<LoginController>();
     final phone = _phoneController.text;
     try {
+      _loginStartTimeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       await controller.requestSmsCode(phone);
       if (!mounted) {
         return;
@@ -97,6 +101,13 @@ class _LoginViewState extends State<_LoginView> {
     EasyLoading.show();
     try {
       await controller.login(phone: phone, code: code);
+      await ReportManager.instance.onLoginSuccess();
+      ReportManager.instance.reportRiskBehavior(
+        productId: '',
+        sceneType: '1',
+        orderNo: '',
+        startTimeSeconds: _loginStartTimeSeconds,
+      );
       if (!mounted) {
         return;
       }
@@ -162,19 +173,19 @@ class _LoginViewState extends State<_LoginView> {
                 ),
                 SizedBox(height: screen.dp(56)),
                 Center(
-                  child: Container(
-                    width: screen.dp(92),
-                    height: screen.dp(92),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD8D8D8),
-                      borderRadius: BorderRadius.circular(screen.dp(20)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(screen.dp(14)),
+                    child: Image.asset(
+                      'assets/image/logo.png',
+                      width: screen.dp(92),
+                      height: screen.dp(92),
                     ),
                   ),
                 ),
                 SizedBox(height: screen.dp(26)),
                 Center(
                   child: Text(
-                    'App Name',
+                    'SAPAT CASH',
                     style: TextStyle(
                       color: const Color(0xFF281001),
                       fontSize: screen.dp(20),

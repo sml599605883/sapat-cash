@@ -17,8 +17,11 @@ import UserNotifications
     manager.delegate = self
     return manager
   }()
+  private let geocoder = CLGeocoder()
   private var latestLocationPayload: [String: Any]?
-  private var pendingLocationResult: FlutterResult?
+  private var pendingLocationResults: [FlutterResult] = []
+  private var locationRequestInFlight = false
+  private var locationTimeoutWorkItem: DispatchWorkItem?
   private var pushToken: String = ""
 
   override func application(
@@ -74,10 +77,6 @@ import UserNotifications
     case "getTrackingStatus":
       result(trackingStatusString(ATTrackingManager.trackingAuthorizationStatus))
     case "getLocation":
-      if let latestLocationPayload {
-        result(latestLocationPayload)
-        return
-      }
       handleLocationRequest(result: result)
     case "getPushToken":
       result(pushToken)
@@ -201,18 +200,24 @@ import UserNotifications
       return
     }
 
-    let payload: [String: Any] = [
-      "province": "",
-      "countryCode": "",
-      "country": "",
-      "street": "",
-      "latitude": "\(location.coordinate.latitude)",
-      "longitude": "\(location.coordinate.longitude)",
-      "city": "",
-      "permissionStatus": permissionStatusString(currentLocationAuthorizationStatus())
-    ]
-    latestLocationPayload = payload
-    resolvePendingLocation(payload)
+    if geocoder.isGeocoding {
+      geocoder.cancelGeocode()
+    }
+
+    geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
+      guard let self else {
+        return
+      }
+
+      let placemark = placemarks?.first
+      let payload = self.locationPayload(
+        location: location,
+        placemark: placemark,
+        status: self.currentLocationAuthorizationStatus()
+      )
+      self.latestLocationPayload = payload
+      self.resolvePendingLocation(payload)
+    }
   }
 
   func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -235,7 +240,12 @@ import UserNotifications
   }
 
   private func handleLocationRequest(result: @escaping FlutterResult) {
-    pendingLocationResult = result
+    pendingLocationResults.append(result)
+    if locationRequestInFlight {
+      return
+    }
+    locationRequestInFlight = true
+    scheduleLocationTimeoutFallback()
 
     guard CLLocationManager.locationServicesEnabled() else {
       resolvePendingLocation(locationPermissionPayload(status: .denied))
@@ -255,7 +265,7 @@ import UserNotifications
   }
 
   private func handleLocationAuthorizationChanged(_ manager: CLLocationManager) {
-    guard pendingLocationResult != nil else {
+    guard locationRequestInFlight else {
       return
     }
 
@@ -288,9 +298,73 @@ import UserNotifications
     ]
   }
 
+  private func locationPayload(
+    location: CLLocation,
+    placemark: CLPlacemark?,
+    status: CLAuthorizationStatus
+  ) -> [String: Any] {
+    [
+      "province": placemark?.administrativeArea ?? "",
+      "countryCode": placemark?.isoCountryCode ?? "",
+      "country": placemark?.country ?? "",
+      "street": buildStreet(from: placemark),
+      "latitude": "\(location.coordinate.latitude)",
+      "longitude": "\(location.coordinate.longitude)",
+      "city": placemark?.locality ?? placemark?.subAdministrativeArea ?? "",
+      "permissionStatus": permissionStatusString(status)
+    ]
+  }
+
+  private func buildStreet(from placemark: CLPlacemark?) -> String {
+    guard let placemark else {
+      return ""
+    }
+
+    let parts = [
+      placemark.subThoroughfare,
+      placemark.thoroughfare,
+      placemark.subLocality,
+      placemark.name
+    ]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+
+    var seen = Set<String>()
+    let uniqueParts = parts.filter { seen.insert($0).inserted }
+    return uniqueParts.joined(separator: " ")
+  }
+
   private func resolvePendingLocation(_ payload: [String: Any]?) {
-    pendingLocationResult?(payload)
-    pendingLocationResult = nil
+    locationTimeoutWorkItem?.cancel()
+    locationTimeoutWorkItem = nil
+    let pendingResults = pendingLocationResults
+    pendingLocationResults.removeAll()
+    locationRequestInFlight = false
+    for result in pendingResults {
+      result(payload)
+    }
+  }
+
+  private func scheduleLocationTimeoutFallback() {
+    locationTimeoutWorkItem?.cancel()
+
+    let workItem = DispatchWorkItem { [weak self] in
+      guard let self else {
+        return
+      }
+      guard self.locationRequestInFlight else {
+        return
+      }
+
+      if let latestLocationPayload = self.latestLocationPayload {
+        self.resolvePendingLocation(latestLocationPayload)
+      } else {
+        self.resolvePendingLocation(nil)
+      }
+    }
+
+    locationTimeoutWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: workItem)
   }
 
   private func configureChannelsIfNeeded() {
