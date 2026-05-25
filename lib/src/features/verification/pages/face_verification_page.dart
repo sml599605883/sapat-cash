@@ -15,6 +15,7 @@ import '../../../core/network/core/error_message_adapter.dart';
 import '../../../core/push/app_push.dart';
 import '../../../core/push/route_names.dart';
 import '../../../core/report/report_manager.dart';
+import '../../../core/report/report_models.dart';
 import '../../product/product_detail_cache.dart';
 import 'identity_verification_page.dart';
 import '../widgets/verification_hint_row.dart';
@@ -146,6 +147,7 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
         TDLivenessCallback(
           onSuccess: (successResultMap) async {
             debugPrint('showLiveness success: $successResultMap');
+            await _reportFaceResult(successResultMap);
             final productId =
                 ProductDetailCache.current?.productId.trim() ?? '';
             if (productId.isEmpty || !mounted) {
@@ -169,8 +171,9 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
             );
             await _continueToNextStep(productId);
           },
-          onFailed: (failResultMap) {
+          onFailed: (failResultMap) async {
             debugPrint('showLiveness failed: $failResultMap');
+            await _reportFaceResult(failResultMap);
             final message =
                 failResultMap['message'].toString().trim().isNotEmpty
                 ? failResultMap['message'].toString().trim()
@@ -184,6 +187,17 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
     } finally {
       EasyLoading.dismiss();
     }
+  }
+
+  Future<void> _reportFaceResult(Map<dynamic, dynamic> resultMap) {
+    return ReportManager.instance.reportFaceResult(
+      FaceReportPayload(
+        livenessId: resultMap['liveness_id']?.toString().trim() ?? '',
+        requestId: resultMap['sequence_id']?.toString().trim() ?? '',
+        resultCode: resultMap['code']?.toString().trim() ?? '',
+        resultMessage: resultMap['message']?.toString().trim() ?? '',
+      ),
+    );
   }
 
   Future<void> _uploadFaceResult({
