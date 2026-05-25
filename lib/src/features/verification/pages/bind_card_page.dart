@@ -502,7 +502,7 @@ class _BindCardPageState extends State<BindCardPage> {
       if (license.isEmpty) {
         throw const BusinessException('Missing face token');
       }
-
+      EasyLoading.dismiss();
       await _trustdeviceProPlugin.showLiveness(
         license,
         TDLivenessCallback(
@@ -538,8 +538,6 @@ class _BindCardPageState extends State<BindCardPage> {
       );
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
-    } finally {
-      EasyLoading.dismiss();
     }
   }
 

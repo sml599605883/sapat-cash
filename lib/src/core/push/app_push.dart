@@ -284,7 +284,10 @@ final class AppPush {
       // the next in-app verification step from product detail again.
       final oreides = responseJson['oreides'].stringOrNull?.trim() ?? '';
       if (oreides.isNotEmpty) {
-        final opened = await _openLandingUrl(navigator, oreides);
+        final opened = await openWebUriWithNavigator(
+          navigator,
+          rawUrl: oreides,
+        );
         if (!opened) {
           throw const BusinessException('Unable to open link');
         }
@@ -595,17 +598,10 @@ final class AppPush {
       return;
     }
 
-    final opened = await _openLandingUrl(navigator, oreides);
+    final opened = await openWebUriWithNavigator(navigator, rawUrl: oreides);
     if (!opened) {
       throw const BusinessException('Unable to open link');
     }
-  }
-
-  static Future<bool> _openLandingUrl(
-    NavigatorState navigator,
-    String rawUrl,
-  ) async {
-    return openWebPageWithNavigator(navigator, rawUrl: rawUrl);
   }
 
   static Future<bool> _ensureLocationAccessForApply() async {
@@ -713,7 +709,7 @@ final class AppPush {
     required String rawUrl,
     String? title,
   }) {
-    return openWebPageWithNavigator(
+    return openWebUriWithNavigator(
       Navigator.of(context),
       rawUrl: rawUrl,
       title: title,
@@ -727,35 +723,32 @@ final class AppPush {
     return openUrlInBrowserWithNavigator(Navigator.of(context), uri: uri);
   }
 
-  static Future<bool> openWebPageWithNavigator(
-    NavigatorState navigator, {
-    required String rawUrl,
-    String? title,
-  }) async {
-    final uri = _tryParseUri(rawUrl);
-    if (uri == null) {
-      return false;
-    }
-    return openWebUriWithNavigator(navigator, uri: uri, title: title);
-  }
-
   static Future<bool> openWebUriWithNavigator(
     NavigatorState navigator, {
-    required Uri uri,
+    Uri? uri,
+    String? rawUrl,
     String? title,
   }) async {
-    if (await handleInternalScheme(navigator, uri)) {
+    final resolvedUri = uri ?? _tryParseUri(rawUrl ?? '');
+    if (resolvedUri == null) {
+      return false;
+    }
+    if (await handleInternalScheme(navigator, resolvedUri)) {
       return true;
     }
-    if (_shouldOpenInWebView(uri)) {
-      await pushWebViewWithNavigator(
+    if (_shouldOpenInWebView(resolvedUri)) {
+      await pushAndRemoveRoutesWithNavigator(
         navigator,
-        url: uri.toString(),
-        title: title,
+        page: WebViewPage(
+          initialUrl: resolvedUri.toString(),
+          initialTitle: title,
+        ),
+        routeName: RouteNames.webView,
+        removeRouteNames: _verificationFlowRouteSequence,
       );
       return true;
     }
-    return openExternalUri(uri);
+    return openExternalUri(resolvedUri);
   }
 
   static Future<bool> openUrlInBrowserWithNavigator(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -29,10 +30,12 @@ class FaceVerificationPage extends StatefulWidget {
   State<FaceVerificationPage> createState() => _FaceVerificationPageState();
 }
 
-class _FaceVerificationPageState extends State<FaceVerificationPage> {
+class _FaceVerificationPageState extends State<FaceVerificationPage>
+    with WidgetsBindingObserver {
   static const _retainPopupType = '1';
   final TrustdeviceProPlugin _trustdeviceProPlugin = TrustdeviceProPlugin();
   int? _scene4StartTimeSeconds;
+  Completer<void>? _resumeCompleter;
 
   Future<void> _handleRetainBack() async {
     final productId = ProductDetailCache.current?.productId.trim() ?? '';
@@ -47,7 +50,22 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initTrustDevice();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _resumeCompleter?.complete();
+      _resumeCompleter = null;
+    }
   }
 
   Future<void> _initTrustDevice() async {
@@ -74,8 +92,14 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
   }
 
   Future<bool> _ensureCameraPermission() async {
+    final previousStatus = await Permission.camera.status;
+    if (previousStatus.isGranted) {
+      return true;
+    }
+
     final status = await Permission.camera.request();
     if (status.isGranted) {
+      await _waitForAppResumedAndFirstFrame();
       return true;
     }
 
@@ -111,6 +135,39 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
     return false;
   }
 
+  Future<void> _waitForAppResumedAndFirstFrame() async {
+    final binding = WidgetsBinding.instance;
+    if (binding.lifecycleState != AppLifecycleState.resumed) {
+      final completer = Completer<void>();
+      _resumeCompleter = completer;
+      if (binding.lifecycleState == AppLifecycleState.resumed &&
+          !completer.isCompleted) {
+        completer.complete();
+        _resumeCompleter = null;
+      }
+      await completer.future.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          if (_resumeCompleter == completer) {
+            _resumeCompleter = null;
+          }
+        },
+      );
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final frameCompleter = Completer<void>();
+    binding.addPostFrameCallback((_) {
+      if (!frameCompleter.isCompleted) {
+        frameCompleter.complete();
+      }
+    });
+    await frameCompleter.future;
+  }
+
   Future<void> _startFaceVerification() async {
     final orderNo = ProductDetailCache.current?.orderNo.trim() ?? '';
     if (orderNo.isEmpty) {
@@ -141,13 +198,13 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
       if (license.isEmpty) {
         throw const BusinessException('Missing face token');
       }
-
+      EasyLoading.dismiss();
       await _trustdeviceProPlugin.showLiveness(
         license,
         TDLivenessCallback(
           onSuccess: (successResultMap) async {
             debugPrint('showLiveness success: $successResultMap');
-            await _reportFaceResult(successResultMap);
+            _reportFaceResult(successResultMap);
             final productId =
                 ProductDetailCache.current?.productId.trim() ?? '';
             if (productId.isEmpty || !mounted) {
@@ -173,7 +230,7 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
           },
           onFailed: (failResultMap) async {
             debugPrint('showLiveness failed: $failResultMap');
-            await _reportFaceResult(failResultMap);
+            _reportFaceResult(failResultMap);
             final message =
                 failResultMap['message'].toString().trim().isNotEmpty
                 ? failResultMap['message'].toString().trim()
@@ -184,8 +241,6 @@ class _FaceVerificationPageState extends State<FaceVerificationPage> {
       );
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
-    } finally {
-      EasyLoading.dismiss();
     }
   }
 
