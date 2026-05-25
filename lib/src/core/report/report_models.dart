@@ -1,6 +1,7 @@
 class ReportLocation {
   const ReportLocation({
     this.province,
+    required this.fullAddress,
     required this.countryCode,
     required this.country,
     required this.street,
@@ -11,6 +12,7 @@ class ReportLocation {
   });
 
   final String? province;
+  final String fullAddress;
   final String countryCode;
   final String country;
   final String street;
@@ -21,6 +23,7 @@ class ReportLocation {
 
   bool get isEmpty =>
       province == null &&
+      fullAddress.isEmpty &&
       countryCode.isEmpty &&
       country.isEmpty &&
       street.isEmpty &&
@@ -31,6 +34,7 @@ class ReportLocation {
   bool get isValid =>
       latitude.isNotEmpty ||
       longitude.isNotEmpty ||
+      fullAddress.isNotEmpty ||
       street.isNotEmpty ||
       city.isNotEmpty ||
       country.isNotEmpty;
@@ -38,6 +42,7 @@ class ReportLocation {
   Map<String, dynamic> toCacheMap() {
     return {
       'province': province,
+      'fullAddress': fullAddress,
       'countryCode': countryCode,
       'country': country,
       'street': street,
@@ -51,6 +56,7 @@ class ReportLocation {
   factory ReportLocation.fromCacheMap(Map<String, dynamic> map) {
     return ReportLocation(
       province: map['province'] as String?,
+      fullAddress: '${map['fullAddress'] ?? ''}',
       countryCode: '${map['countryCode'] ?? ''}',
       country: '${map['country'] ?? ''}',
       street: '${map['street'] ?? ''}',
@@ -67,30 +73,29 @@ class NativeDeviceSnapshot {
     this.idfv = '',
     this.idfa = '',
     this.deviceId = '',
-    this.batteryLevel = '0',
-    this.isCharging = '0',
-    this.elapsedMillis = '0',
+    this.batteryLevel = 0,
+    this.isCharging = 0,
+    this.elapsedMillis = 0,
     this.uptimeMillis = '0',
-    this.isUsingProxy = '0',
-    this.isUsingVpn = '0',
-    this.isJailbroken = '0',
-    this.isEmulator = '0',
+    this.isUsingProxy = 0,
+    this.isUsingVpn = 0,
+    this.isJailbroken = 0,
+    this.isEmulator = 0,
     this.language = '',
     this.carrier = '',
     this.networkType = '',
     this.timeZoneName = '',
-    this.cpuCoreCount = '0',
+    this.cpuCoreCount = 0,
     this.brand = '',
     this.deviceName = '',
     this.model = '',
-    this.osVersion = '',
-    this.screenHeight = '0',
-    this.screenWidth = '0',
+    this.screenHeight = 0,
+    this.screenWidth = 0,
     this.screenSize = '0',
     this.innerIp = '',
     this.currentWifiName = '',
     this.currentWifiBssid = '',
-    this.currentWifiMac = '',
+    this.wifiCount = 0,
     this.availableStorage = '0',
     this.totalStorage = '0',
     this.totalMemory = '0',
@@ -102,30 +107,29 @@ class NativeDeviceSnapshot {
   final String idfv;
   final String idfa;
   final String deviceId;
-  final String batteryLevel;
-  final String isCharging;
-  final String elapsedMillis;
+  final int batteryLevel;
+  final int isCharging;
+  final int elapsedMillis;
   final String uptimeMillis;
-  final String isUsingProxy;
-  final String isUsingVpn;
-  final String isJailbroken;
-  final String isEmulator;
+  final int isUsingProxy;
+  final int isUsingVpn;
+  final int isJailbroken;
+  final int isEmulator;
   final String language;
   final String carrier;
   final String networkType;
   final String timeZoneName;
-  final String cpuCoreCount;
+  final int cpuCoreCount;
   final String brand;
   final String deviceName;
   final String model;
-  final String osVersion;
-  final String screenHeight;
-  final String screenWidth;
+  final int screenHeight;
+  final int screenWidth;
   final String screenSize;
   final String innerIp;
   final String currentWifiName;
   final String currentWifiBssid;
-  final String currentWifiMac;
+  final int wifiCount;
   final String availableStorage;
   final String totalStorage;
   final String totalMemory;

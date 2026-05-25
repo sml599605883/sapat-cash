@@ -49,26 +49,20 @@ class ReportPayloadHelper {
   }) async {
     final packageInfo = await PackageInfo.fromPlatform();
     final deviceInfo = DeviceInfoPlugin();
-
-    String systemVersion = snapshot.osVersion;
-    if (systemVersion.isEmpty) {
-      if (await deviceInfo.deviceInfo case final info) {
-        systemVersion = normalize(info.data['systemVersion']);
-      }
-    }
+    final iosInfo = await deviceInfo.iosInfo;
 
     final payload = {
-      'vulgates': normalize(systemVersion),
+      'vulgates': iosInfo.systemVersion,
       'mycobacteria': lastLoginAtMillis,
       'fluorinating': normalize(packageInfo.packageName),
       'lamas': {
-        'scalls': normalize(snapshot.batteryLevel),
-        'hedgehog': normalize(snapshot.isCharging),
+        'scalls': snapshot.batteryLevel,
+        'hedgehog': snapshot.isCharging,
       },
       'trouser': {
-        'zoolatry': '',
-        'legendizes': '',
-        'unchronological': '',
+        'zoolatry': normalize(location?.longitude),
+        'legendizes': normalize(location?.latitude),
+        'unchronological': normalize(location?.fullAddress),
         'embranglement': {
           'dreamlike': normalize(location?.country),
           'paperclips': normalize(location?.countryCode),
@@ -81,40 +75,47 @@ class ReportPayloadHelper {
       'monocarp': {
         'donkeys': normalize(snapshot.idfv),
         'owlishly': normalize(snapshot.idfa),
-        'ejaculators': normalize(snapshot.deviceId),
+        'ejaculators': normalize(snapshot.currentWifiBssid),
         'incantational': DateTime.now().millisecondsSinceEpoch,
         'cosponsoring': normalize(snapshot.uptimeMillis),
         'defiances': normalize(snapshot.networkType),
         'recolor': normalize(snapshot.carrier),
         'shrubbiest': normalize(snapshot.language),
         'diphthongizes': normalize(snapshot.timeZoneName),
-        'catabolically': normalize(snapshot.elapsedMillis),
-        'discombobulated': normalize(snapshot.isUsingProxy),
-        'subrogated': normalize(snapshot.isUsingVpn),
-        'precommitments': normalize(snapshot.isJailbroken),
-        'wedeln': normalize(snapshot.isEmulator),
+        'catabolically': snapshot.elapsedMillis,
+        'discombobulated': snapshot.isUsingProxy,
+        'subrogated': snapshot.isUsingVpn,
+        'precommitments': snapshot.isJailbroken,
+        'wedeln': snapshot.isEmulator,
       },
       'ritz': {
         'humanity': normalize(snapshot.brand),
-        'downshifts': normalize(snapshot.deviceName),
-        'cashoo': normalize(snapshot.cpuCoreCount),
-        'regilds': normalize(snapshot.screenHeight),
+        'downshifts': iosInfo.model,
+        'cashoo': snapshot.cpuCoreCount,
+        'regilds': snapshot.screenHeight,
         'trickily': normalize(snapshot.deviceName),
-        'winesap': normalize(snapshot.screenWidth),
-        'bombings': normalize(snapshot.model),
+        'winesap': snapshot.screenWidth,
+        'bombings': iosInfo.modelName,
         'aplombs': normalize(snapshot.screenSize),
-        'menazons': normalize(snapshot.osVersion),
+        'menazons': iosInfo.systemVersion,
       },
       'sanitorium': {
         'scourges': normalize(snapshot.innerIp),
-        'sandlots': [],
+        'sandlots': [
+          {
+            'fornices': normalize(snapshot.currentWifiName),
+            'colatitudes': normalize(snapshot.currentWifiBssid),
+            'ejaculators': normalize(snapshot.currentWifiBssid),
+            'jokily': normalize(snapshot.currentWifiName),
+          },
+        ],
         'crinites': {
           'fornices': normalize(snapshot.currentWifiName),
           'colatitudes': normalize(snapshot.currentWifiBssid),
-          'ejaculators': normalize(snapshot.currentWifiMac),
+          'ejaculators': normalize(snapshot.currentWifiBssid),
           'jokily': normalize(snapshot.currentWifiName),
         },
-        'etymologist': '0',
+        'etymologist': normalize(snapshot.wifiCount),
       },
       'clubwomen': {
         'wherever': normalize(snapshot.availableStorage),

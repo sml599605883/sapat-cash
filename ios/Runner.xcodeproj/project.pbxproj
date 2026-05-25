@@ -157,7 +157,6 @@
 				5220B4A8D7D87977CD163E97 /* Pods-RunnerTests.release.xcconfig */,
 				BB17A57E5C4EE152D4DAEBF1 /* Pods-RunnerTests.profile.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -204,6 +203,7 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				12AB09BEA97BD6F374351B47 /* [CP] Embed Pods Frameworks */,
+				8E6D5F4C3B2A190807060504 /* Sign Native Asset Frameworks */,
 				3E0FC08900832F37A851324A /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
@@ -347,6 +347,21 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		8E6D5F4C3B2A190807060504 /* Sign Native Asset Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Sign Native Asset Frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"$PLATFORM_NAME\" != \"iphoneos\" ]; then\n  exit 0\nfi\n\nif [ -z \"$EXPANDED_CODE_SIGN_IDENTITY\" ]; then\n  echo \"No code signing identity available, skipping native asset signing\"\n  exit 0\nfi\n\nFRAMEWORKS_DIR=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\nif [ ! -d \"$FRAMEWORKS_DIR\" ]; then\n  exit 0\nfi\n\nfind \"$FRAMEWORKS_DIR\" \\( -name \"*.framework\" -o -name \"*.dylib\" \\) | while read -r artifact; do\n  echo \"Signing $artifact\"\n  codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --preserve-metadata=identifier,entitlements \"$artifact\"\ndone\n";
 		};
 		61E05C657FD221973E69B83B /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -508,7 +523,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bq.julyTwo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bq2Dev_19;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bq2Dev_25net;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -701,7 +716,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bq.julyTwo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bq2Dev_19;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bq2Dev_25net;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -734,7 +749,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bq.julyTwo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bq2Dev_19;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = bq2Dev_25net;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;

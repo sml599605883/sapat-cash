@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_device_info_plus/flutter_device_info_plus.dart';
 
 import '../json/json.dart';
 import '../network/debug/network_proxy_manager.dart';
@@ -15,6 +16,9 @@ class ReportNativeBridge {
   static const _eventChannel = EventChannel('sapat_cash/report_event');
 
   static Stream<Json>? _eventStream;
+  static final FlutterDeviceInfoPlus _flutterDeviceInfo =
+      FlutterDeviceInfoPlus();
+  static Future<String>? _screenSizeFuture;
 
   static Stream<Json> nativeEvents() {
     _eventStream ??= _eventChannel
@@ -48,6 +52,7 @@ class ReportNativeBridge {
         province: json['province'].stringValue.isEmpty
             ? null
             : json['province'].stringValue,
+        fullAddress: json['fullAddress'].stringValue,
         countryCode: json['countryCode'].stringValue,
         country: json['country'].stringValue,
         street: json['street'].stringValue,
@@ -87,41 +92,41 @@ class ReportNativeBridge {
   }
 
   static Future<NativeDeviceSnapshot> getDeviceSnapshot() async {
+    final screenSize = await _resolveScreenSize();
     try {
       final json = Json(
         await _methodChannel.invokeMethod<dynamic>('getDeviceSnapshot'),
       );
       if (json.mapOrNull == null) {
-        return _fallbackSnapshot();
+        return _fallbackSnapshot(screenSize: screenSize);
       }
       return NativeDeviceSnapshot(
         idfv: json['idfv'].stringValue,
         idfa: json['idfa'].stringValue,
         deviceId: json['deviceId'].stringValue,
-        batteryLevel: json['batteryLevel'].stringOrNull ?? '0',
-        isCharging: json['isCharging'].stringOrNull ?? '0',
-        elapsedMillis: json['elapsedMillis'].stringOrNull ?? '0',
+        batteryLevel: json['batteryLevel'].intValue,
+        isCharging: json['isCharging'].intValue,
+        elapsedMillis: json['elapsedMillis'].intValue,
         uptimeMillis: json['uptimeMillis'].stringOrNull ?? '0',
-        isUsingProxy: json['isUsingProxy'].stringOrNull ?? '0',
-        isUsingVpn: json['isUsingVpn'].stringOrNull ?? '0',
-        isJailbroken: json['isJailbroken'].stringOrNull ?? '0',
-        isEmulator: json['isEmulator'].stringOrNull ?? '0',
+        isUsingProxy: json['isUsingProxy'].intValue,
+        isUsingVpn: json['isUsingVpn'].intValue,
+        isJailbroken: json['isJailbroken'].intValue,
+        isEmulator: json['isEmulator'].intValue,
         language: json['language'].stringValue,
         carrier: json['carrier'].stringValue,
         networkType: json['networkType'].stringValue,
         timeZoneName: json['timeZoneName'].stringValue,
-        cpuCoreCount: json['cpuCoreCount'].stringOrNull ?? '0',
+        cpuCoreCount: json['cpuCoreCount'].intValue,
         brand: json['brand'].stringValue,
         deviceName: json['deviceName'].stringValue,
         model: json['model'].stringValue,
-        osVersion: json['osVersion'].stringValue,
-        screenHeight: json['screenHeight'].stringOrNull ?? '0',
-        screenWidth: json['screenWidth'].stringOrNull ?? '0',
-        screenSize: json['screenSize'].stringOrNull ?? '0',
+        screenHeight: json['screenHeight'].intValue,
+        screenWidth: json['screenWidth'].intValue,
+        screenSize: screenSize,
         innerIp: json['innerIp'].stringValue,
         currentWifiName: json['currentWifiName'].stringValue,
         currentWifiBssid: json['currentWifiBssid'].stringValue,
-        currentWifiMac: json['currentWifiMac'].stringValue,
+        wifiCount: json['wifiCount'].intValue,
         availableStorage: json['availableStorage'].stringOrNull ?? '0',
         totalStorage: json['totalStorage'].stringOrNull ?? '0',
         totalMemory: json['totalMemory'].stringOrNull ?? '0',
@@ -130,7 +135,7 @@ class ReportNativeBridge {
         riskDeviceId: json['riskDeviceId'].stringValue,
       );
     } catch (_) {
-      return _fallbackSnapshot();
+      return _fallbackSnapshot(screenSize: screenSize);
     }
   }
 
@@ -151,15 +156,32 @@ class ReportNativeBridge {
     }
   }
 
-  static NativeDeviceSnapshot _fallbackSnapshot() {
+  static Future<String> _resolveScreenSize() {
+    return _screenSizeFuture ??= _loadScreenSize();
+  }
+
+  static Future<String> _loadScreenSize() async {
+    try {
+      final info = await _flutterDeviceInfo.getDeviceInfo();
+      final sizeInches = info.displayInfo.screenSizeInches;
+      if (sizeInches <= 0) {
+        return '';
+      }
+      return sizeInches.toStringAsFixed(1);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static NativeDeviceSnapshot _fallbackSnapshot({String screenSize = ''}) {
     return NativeDeviceSnapshot(
       language: PlatformDispatcher.instance.locale.languageCode,
       timeZoneName: DateTime.now().timeZoneName,
-      cpuCoreCount: '${Platform.numberOfProcessors}',
-      osVersion: Platform.operatingSystemVersion,
+      cpuCoreCount: Platform.numberOfProcessors,
       brand: Platform.operatingSystem,
       model: Platform.localHostname,
       deviceName: Platform.localHostname,
+      screenSize: screenSize,
     );
   }
 }

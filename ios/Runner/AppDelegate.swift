@@ -4,6 +4,10 @@ import AppTrackingTransparency
 import AdSupport
 import CFNetwork
 import CoreLocation
+import CoreTelephony
+import Darwin
+import NetworkExtension
+import SystemConfiguration.CaptiveNetwork
 import UserNotifications
 
 @main
@@ -83,7 +87,7 @@ import UserNotifications
     case "getSystemProxy":
       result(buildSystemProxyPayload())
     case "getDeviceSnapshot":
-      result(buildDeviceSnapshot())
+      buildDeviceSnapshot(result: result)
     case "initializeAdjust":
       result(nil)
     default:
@@ -106,48 +110,334 @@ import UserNotifications
     }
   }
 
-  private func buildDeviceSnapshot() -> [String: Any] {
+  private func buildDeviceSnapshot(result: @escaping FlutterResult) {
+    let wifiCount = wifiCount()
+    fetchCurrentSSIDBSSID { [weak self] ssid, bssid in
+      guard let self else {
+        result([:])
+        return
+      }
+      result(self.buildDeviceSnapshotPayload(
+        wifiCount: wifiCount,
+        currentWifiName: ssid,
+        currentWifiBssid: bssid
+      ))
+    }
+  }
+
+  private func buildDeviceSnapshotPayload(
+    wifiCount: Int,
+    currentWifiName: String,
+    currentWifiBssid: String
+  ) -> [String: Any] {
     let device = UIDevice.current
     device.isBatteryMonitoringEnabled = true
     let locale = Locale.current
     let authorizationStatus = currentLocationAuthorizationStatus()
+    let proxyPayload = buildSystemProxyPayload()
+    let storagePayload = buildStoragePayload()
+    let ipAddress = wifiIPv4Address()
+    let networkType = currentNetworkType()
+    let carrier = currentCarrierName()
 
     return [
       "idfv": device.identifierForVendor?.uuidString ?? "",
       "idfa": ASIdentifierManager.shared().advertisingIdentifier.uuidString,
       "deviceId": device.identifierForVendor?.uuidString ?? "",
-      "batteryLevel": "\(max(Int(device.batteryLevel * 100), 0))",
-      "isCharging": device.batteryState == .charging || device.batteryState == .full ? "1" : "0",
-      "elapsedMillis": "\(Int(ProcessInfo.processInfo.systemUptime * 1000))",
+      "batteryLevel": max(Int(device.batteryLevel * 100), 0),
+      "isCharging": device.batteryState == .charging || device.batteryState == .full ? 1 : 0,
+      "elapsedMillis": Int(ProcessInfo.processInfo.systemUptime * 1000),
       "uptimeMillis": "\(Int(ProcessInfo.processInfo.systemUptime * 1000))",
-      "isUsingProxy": buildSystemProxyPayload()["enabled"] as? Bool == true ? "1" : "0",
-      "isUsingVpn": "0",
-      "isJailbroken": "0",
-      "isEmulator": isRunningOnSimulator() ? "1" : "0",
+      "isUsingProxy": proxyPayload["enabled"] as? Bool == true ? "1" : "0",
+      "isUsingVpn": isUsingVpn() ? 1 : 0,
+      "isJailbroken": isJailbroken() ? 1: 0,
+      "isEmulator": isRunningOnSimulator() ? 1 : 0,
       "language": locale.languageCode ?? "",
-      "carrier": "",
-      "networkType": "OTHER",
-      "timeZoneName": TimeZone.current.identifier,
-      "cpuCoreCount": "\(ProcessInfo.processInfo.activeProcessorCount)",
-      "brand": "Apple",
+      "carrier": carrier,
+      "networkType": networkType,
+      "timeZoneName": TimeZone.current.abbreviation() ?? "",
+      "cpuCoreCount": ProcessInfo.processInfo.activeProcessorCount,
+      "brand": "\("QC_Re")feren\("ce_Phone")",
       "deviceName": device.name,
-      "model": device.model,
-      "osVersion": device.systemVersion,
-      "screenHeight": "\(Int(UIScreen.main.bounds.height))",
-      "screenWidth": "\(Int(UIScreen.main.bounds.width))",
-      "screenSize": "\(UIScreen.main.nativeBounds.size)",
-      "innerIp": "",
-      "currentWifiName": "",
-      "currentWifiBssid": "",
-      "currentWifiMac": "",
-      "availableStorage": "0",
-      "totalStorage": "0",
+      "model": deviceMachineIdentifier(),
+      "screenHeight": Int(UIScreen.main.bounds.height),
+      "screenWidth": Int(UIScreen.main.bounds.width),
+      "screenSize": "\(Int(UIScreen.main.nativeBounds.width))x\(Int(UIScreen.main.nativeBounds.height))",
+      "innerIp": ipAddress,
+      "currentWifiName": currentWifiName,
+      "currentWifiBssid": currentWifiBssid,
+      "wifiCount": "\(wifiCount)",
+      "availableStorage": storagePayload.available,
+      "totalStorage": storagePayload.total,
       "totalMemory": "\(ProcessInfo.processInfo.physicalMemory)",
-      "availableMemory": "0",
+      "availableMemory": currentAvailableMemory(),
       "pushToken": pushToken,
       "riskDeviceId": device.identifierForVendor?.uuidString ?? "",
       "locationPermissionStatus": permissionStatusString(authorizationStatus)
     ]
+  }
+
+  private func wifiCount() -> Int {
+    currentWifiNetworkInfos().count
+  }
+
+  private func fetchCurrentSSIDBSSID(completion: @escaping (String, String) -> Void) {
+    if #available(iOS 26.0, *) {
+      NEHotspotNetwork.fetchCurrent { [weak self] network in
+        let ssid = network?.ssid ?? ""
+        let bssid = network?.bssid ?? ""
+        if !ssid.isEmpty || !bssid.isEmpty {
+          completion(ssid, bssid)
+          return
+        }
+        let fallback = self?.legacySSIDBSSID() ?? ("", "")
+        completion(fallback.0, fallback.1)
+      }
+      return
+    }
+    let fallback = legacySSIDBSSID()
+    completion(fallback.0, fallback.1)
+  }
+
+  private func legacySSIDBSSID() -> (String, String) {
+    let networks = currentWifiNetworkInfos()
+    guard let first = networks.first else {
+      return ("", "")
+    }
+    return (first.ssid, first.bssid)
+  }
+
+  private func currentWifiNetworkInfos() -> [(ssid: String, bssid: String)] {
+    guard let interfaces = CNCopySupportedInterfaces() as? [String] else {
+      return []
+    }
+
+    var networks: [(ssid: String, bssid: String)] = []
+    for interface in interfaces {
+      guard
+        let info = CNCopyCurrentNetworkInfo(interface as CFString) as? [String: Any]
+      else {
+        continue
+      }
+
+      let ssid = info[kCNNetworkInfoKeySSID as String] as? String ?? ""
+      let bssid = info[kCNNetworkInfoKeyBSSID as String] as? String ?? ""
+      guard !ssid.isEmpty || !bssid.isEmpty else {
+        continue
+      }
+      networks.append((ssid: ssid, bssid: bssid))
+    }
+    return networks
+  }
+    
+    private func isJailbroken() -> Bool {
+#if targetEnvironment(simulator)
+        return false
+#else
+        let jailbreakPaths = [
+            "/Applications/Cydia.app",
+            "/Library/MobileSubstrate/MobileSubstrate.dylib",
+            "/bin/bash",
+            "/usr/sbin/sshd",
+            "/etc/apt",
+        ]
+        for path in jailbreakPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                return true
+            }
+        }
+        if let url = URL(string: "cydia://package/com.example.package") {
+            if UIApplication.shared.canOpenURL(url) {
+                return true
+            }
+        }
+        let testPath = "/private/jb_test.txt"
+        do {
+            try "test".write(toFile: testPath, atomically: true, encoding: .utf8)
+            try FileManager.default.removeItem(atPath: testPath)
+            return true
+        } catch {
+        }
+        return false
+#endif
+    }
+    
+  private func currentCarrierName() -> String {
+    let networkInfo = CTTelephonyNetworkInfo()
+    if #available(iOS 12.0, *) {
+      return networkInfo.serviceSubscriberCellularProviders?.values
+        .compactMap { $0.carrierName?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .first(where: { !$0.isEmpty }) ?? ""
+    }
+    return networkInfo.subscriberCellularProvider?.carrierName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+  }
+
+  private func currentNetworkType() -> String {
+    let interfaceNames = activeInterfaceNames()
+    if interfaceNames.contains("en0") {
+      return "WIFI"
+    }
+
+    let networkInfo = CTTelephonyNetworkInfo()
+    let radioTech: String?
+    if #available(iOS 12.0, *) {
+      radioTech = networkInfo.serviceCurrentRadioAccessTechnology?.values.first
+    } else {
+      radioTech = networkInfo.currentRadioAccessTechnology
+    }
+
+    switch radioTech {
+    case CTRadioAccessTechnologyGPRS,
+      CTRadioAccessTechnologyEdge,
+      CTRadioAccessTechnologyCDMA1x:
+      return "2G"
+    case CTRadioAccessTechnologyWCDMA,
+      CTRadioAccessTechnologyHSDPA,
+      CTRadioAccessTechnologyHSUPA,
+      CTRadioAccessTechnologyCDMAEVDORev0,
+      CTRadioAccessTechnologyCDMAEVDORevA,
+      CTRadioAccessTechnologyCDMAEVDORevB,
+      CTRadioAccessTechnologyeHRPD:
+      return "3G"
+    case CTRadioAccessTechnologyLTE:
+      return "4G"
+    default:
+      if #available(iOS 14.1, *),
+         radioTech == CTRadioAccessTechnologyNR ||
+         radioTech == CTRadioAccessTechnologyNRNSA {
+        return "5G"
+      }
+      return "OTHER"
+    }
+  }
+
+  private func wifiIPv4Address() -> String {
+    var address = ""
+    var ifaddrPointer: UnsafeMutablePointer<ifaddrs>?
+
+    guard getifaddrs(&ifaddrPointer) == 0, let firstAddress = ifaddrPointer else {
+      return address
+    }
+    defer { freeifaddrs(ifaddrPointer) }
+
+    for interface in sequence(first: firstAddress, next: { $0.pointee.ifa_next }) {
+      guard let interfaceAddress = interface.pointee.ifa_addr else {
+        continue
+      }
+      let addrFamily = interfaceAddress.pointee.sa_family
+      guard addrFamily == UInt8(AF_INET) else {
+        continue
+      }
+
+      let name = String(cString: interface.pointee.ifa_name)
+      guard name == "en0" else {
+        continue
+      }
+
+      var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+      var addr = interfaceAddress.pointee
+      if getnameinfo(
+        &addr,
+        socklen_t(interfaceAddress.pointee.sa_len),
+        &hostname,
+        socklen_t(hostname.count),
+        nil,
+        socklen_t(0),
+        NI_NUMERICHOST
+      ) == 0 {
+        address = String(cString: hostname)
+        break
+      }
+    }
+
+    return address
+  }
+
+  private func activeInterfaceNames() -> [String] {
+    var ifaddrPointer: UnsafeMutablePointer<ifaddrs>?
+    guard getifaddrs(&ifaddrPointer) == 0, let firstAddress = ifaddrPointer else {
+      return []
+    }
+    defer { freeifaddrs(ifaddrPointer) }
+
+    var names = Set<String>()
+    for interface in sequence(first: firstAddress, next: { $0.pointee.ifa_next }) {
+      let flags = Int32(interface.pointee.ifa_flags)
+      let isUp = (flags & IFF_UP) == IFF_UP
+      let isRunning = (flags & IFF_RUNNING) == IFF_RUNNING
+      guard isUp, isRunning else {
+        continue
+      }
+      names.insert(String(cString: interface.pointee.ifa_name))
+    }
+    return Array(names)
+  }
+
+  private func isUsingVpn() -> Bool {
+    let interfaceNames = activeInterfaceNames()
+    return interfaceNames.contains { name in
+      name.hasPrefix("tap") ||
+        name.hasPrefix("tun") ||
+        name.hasPrefix("ppp") ||
+        name.hasPrefix("ipsec") ||
+        name.hasPrefix("utun")
+    }
+  }
+
+  private func buildStoragePayload() -> (available: String, total: String) {
+    guard
+      let path = NSSearchPathForDirectoriesInDomains(
+        .documentDirectory, .userDomainMask, true
+      ).first
+    else {
+      return ("0", "0")
+    }
+
+    do {
+      let attributes = try FileManager.default.attributesOfFileSystem(forPath: path)
+      let available = attributes[.systemFreeSize] as? UInt64 ?? 0
+      let total = attributes[.systemSize] as? UInt64 ?? 0
+      return ("\(available)", "\(total)")
+    } catch {
+      return ("0", "0")
+    }
+  }
+
+  private func currentAvailableMemory() -> String {
+    var vmStats = vm_statistics_data_t()
+    var infoCount = mach_msg_type_number_t(
+      MemoryLayout<vm_statistics_data_t>.size / MemoryLayout<integer_t>.size
+    )
+    let result: kern_return_t = withUnsafeMutableBytes(of: &vmStats) { rawBuffer in
+      let reboundBuffer = rawBuffer.bindMemory(to: integer_t.self)
+      return host_statistics(
+        mach_host_self(),
+        HOST_VM_INFO,
+        reboundBuffer.baseAddress,
+        &infoCount
+      )
+    }
+
+    guard result == KERN_SUCCESS else {
+      return "0"
+    }
+
+    let freeBytes =
+      UInt64(vm_page_size) * UInt64(vmStats.free_count) +
+      UInt64(vm_page_size) * UInt64(vmStats.inactive_count)
+    return "\(freeBytes)"
+  }
+
+  private func deviceMachineIdentifier() -> String {
+    var systemInfo = utsname()
+    uname(&systemInfo)
+    let mirror = Mirror(reflecting: systemInfo.machine)
+    return mirror.children.reduce(into: "") { identifier, element in
+      guard let value = element.value as? Int8, value != 0 else {
+        return
+      }
+      identifier.append(Character(UnicodeScalar(UInt8(value))))
+    }
   }
 
   private func buildSystemProxyPayload() -> [String: Any] {
@@ -288,6 +578,7 @@ import UserNotifications
   private func locationPermissionPayload(status: CLAuthorizationStatus) -> [String: Any] {
     [
       "province": "",
+      "fullAddress": "",
       "countryCode": "",
       "country": "",
       "street": "",
@@ -305,6 +596,7 @@ import UserNotifications
   ) -> [String: Any] {
     [
       "province": placemark?.administrativeArea ?? "",
+      "fullAddress": buildFullAddress(from: placemark),
       "countryCode": placemark?.isoCountryCode ?? "",
       "country": placemark?.country ?? "",
       "street": buildStreet(from: placemark),
@@ -332,6 +624,27 @@ import UserNotifications
     var seen = Set<String>()
     let uniqueParts = parts.filter { seen.insert($0).inserted }
     return uniqueParts.joined(separator: " ")
+  }
+
+  private func buildFullAddress(from placemark: CLPlacemark?) -> String {
+    guard let placemark else {
+      return ""
+    }
+
+    let parts = [
+      placemark.name,
+      placemark.subLocality,
+      placemark.locality,
+      placemark.subAdministrativeArea,
+      placemark.administrativeArea,
+      placemark.country
+    ]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+
+    var seen = Set<String>()
+    let uniqueParts = parts.filter { seen.insert($0).inserted }
+    return uniqueParts.joined(separator: ", ")
   }
 
   private func resolvePendingLocation(_ payload: [String: Any]?) {
