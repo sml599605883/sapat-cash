@@ -10,6 +10,8 @@ import '../common/fetch_popup_handler.dart';
 import '../main_tab/main_tab_controller.dart';
 import 'home_models.dart';
 import 'widgets/home_promo_banner.dart';
+import 'widgets/home_progress_module.dart';
+import 'widgets/home_recommendation_list.dart';
 import 'widgets/home_top_section.dart';
 
 class HomePage extends StatefulWidget {
@@ -111,12 +113,12 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             children: [
               HomeTopSection(
-                section: _homeData?.firstSection(HomeSectionType.largeCard),
+                section: _homeData?.pretasted,
                 icon: _homeData?.icon,
               ),
-              HomePromoBanner(
-                section: _homeData?.firstSection(HomeSectionType.banner),
-              ),
+              HomePromoBanner(banners: _homeData?.banner ?? const []),
+              HomeProgressModule(items: _homeData?.progressCard ?? const []),
+              HomeRecommendationList(items: _homeData?.productList ?? const []),
               SizedBox(height: screen.dp(24)),
             ],
           ),

@@ -10,15 +10,13 @@ class HomeTopSection extends StatelessWidget {
   static const _lightText = Color(0xFFFFC7AF);
   static const _darkText = Color(0xFF331707);
 
-  final HomeSection? section;
+  final HomeLargeCardItem? section;
   final HomeIconEntry? icon;
 
   @override
   Widget build(BuildContext context) {
     final screen = context.screen;
-    final card = section?.items.isNotEmpty == true
-        ? section?.items.first
-        : null;
+    final card = section;
     final hasAuthProgress = card?.authProgress.isNotEmpty == true;
     final slogan = card?.description?.trim();
 
@@ -99,23 +97,20 @@ class HomeTopSection extends StatelessWidget {
 class _TopCard extends StatelessWidget {
   const _TopCard({required this.card, required this.icon});
 
-  final HomeSectionItem? card;
+  final HomeLargeCardItem? card;
   final HomeIconEntry? icon;
 
   @override
   Widget build(BuildContext context) {
     final screen = context.screen;
     final appName = card?.productName?.trim();
-    final loanTerm = card?.loanTerm?.trim();
-    final loanTermText = card?.loanTermText?.trim();
-    final interestRate = card?.interestRate?.trim();
-    final interestRateText = card?.interestRateText?.trim();
     final amountText = card?.amountText?.trim();
     final amount = card?.amount?.trim();
     final applyText = card?.buttonText?.trim();
     final iconUrl = icon?.imageUrl.trim();
     final hasIconUrl = iconUrl != null && iconUrl.isNotEmpty;
-    // final hasAuthProgress = card?.authProgress.isNotEmpty == true;
+    final creditProgress =
+        card?.creditProgress ?? const <HomeCreditProgressEntry>[];
 
     return Column(
       children: [
@@ -164,21 +159,11 @@ class _TopCard extends StatelessWidget {
                 ],
               ),
               SizedBox(height: screen.dp(40)),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _MetricItem(
-                    icon: 'assets/image/home/home_calendar_icon.png',
-                    value: loanTerm ?? '',
-                    label: loanTermText ?? '',
-                  ),
-                  SizedBox(width: screen.dp(68)),
-                  _MetricItem(
-                    icon: 'assets/image/home/home_percent_icon.png',
-                    value: interestRate ?? '',
-                    label: interestRateText ?? '',
-                  ),
-                ],
+              SizedBox(
+                height: screen.dp(66),
+                child: creditProgress.isNotEmpty
+                    ? _CreditProgressRow(items: creditProgress)
+                    : _LoanMetricsRow(card: card),
               ),
               SizedBox(height: screen.dp(36)),
               Row(
@@ -234,6 +219,112 @@ class _TopCard extends StatelessWidget {
   }
 }
 
+class _LoanMetricsRow extends StatelessWidget {
+  const _LoanMetricsRow({required this.card});
+
+  final HomeLargeCardItem? card;
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+    final loanTerm = card?.loanTerm?.trim() ?? '';
+    final loanTermText = card?.loanTermText?.trim() ?? '';
+    final interestRate = card?.interestRate?.trim() ?? '';
+    final interestRateText = card?.interestRateText?.trim() ?? '';
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _MetricItem(
+          icon: 'assets/image/home/home_calendar_icon.png',
+          value: loanTerm,
+          label: loanTermText,
+        ),
+        SizedBox(width: screen.dp(68)),
+        _MetricItem(
+          icon: 'assets/image/home/home_percent_icon.png',
+          value: interestRate,
+          label: interestRateText,
+        ),
+      ],
+    );
+  }
+}
+
+class _CreditProgressRow extends StatelessWidget {
+  const _CreditProgressRow({required this.items});
+
+  final List<HomeCreditProgressEntry> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = items.length == 1 ? items : [items.first, items.last];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: visibleItems
+          .map((item) => _CreditProgressItem(item: item))
+          .toList(),
+    );
+  }
+}
+
+class _CreditProgressItem extends StatelessWidget {
+  const _CreditProgressItem({required this.item});
+
+  final HomeCreditProgressEntry item;
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = context.screen;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: screen.dp(26),
+          height: screen.dp(26),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFAB8AC), Color(0xFFFDDFC5), Color(0xFFFFF2DD)],
+              stops: [0, 0.45, 0.98],
+            ),
+            borderRadius: BorderRadius.circular(screen.dp(6)),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            item.period,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: HomeTopSection._darkText,
+              fontSize: screen.dp(18),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        SizedBox(height: screen.dp(6)),
+        Text(
+          item.periodText,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: screen.dp(16),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          item.interestRate,
+          style: TextStyle(
+            color: HomeTopSection._lightText,
+            fontSize: screen.dp(10),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _UnlockedLimitCard extends StatelessWidget {
   const _UnlockedLimitCard({required this.card});
 
@@ -241,7 +332,7 @@ class _UnlockedLimitCard extends StatelessWidget {
   static const double _lineDesignWidth = 319;
   static const double _lineDesignHeight = 68;
 
-  final HomeSectionItem card;
+  final HomeLargeCardItem card;
 
   @override
   Widget build(BuildContext context) {

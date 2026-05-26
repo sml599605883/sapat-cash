@@ -1,5 +1,8 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:sapat_cash/src/core/json/json.dart';
@@ -29,6 +32,7 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
   bool _loadFailed = false;
   bool _appForeground = true;
   bool _bridgeEnabled = false;
+  bool _controllerAvailable = true;
   late String _title;
 
   @override
@@ -98,19 +102,24 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
       'callbackId': request.callbackId,
       'data': result.data,
     }).rawString();
-    await _controller?.evaluateJavascript(
-      source: 'window.$_bridgeHandlerName.handleMessage($callbackPayload);',
-    );
+    final controller = _controller;
+    if (controller != null) {
+      await _safeWebViewCall(
+        () => controller.evaluateJavascript(
+          source: 'window.$_bridgeHandlerName.handleMessage($callbackPayload);',
+        ),
+      );
+    }
     return null;
   }
 
   Future<bool> _goBackInWebView() async {
     final controller = _controller;
-    if (controller == null) {
+    if (controller == null || !_controllerAvailable) {
       return false;
     }
-    if (await controller.canGoBack()) {
-      await controller.goBack();
+    if (await _safeWebViewCall(() => controller.canGoBack()) == true) {
+      await _safeWebViewCall(() => controller.goBack());
       return true;
     }
     return false;
@@ -122,15 +131,17 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
       return;
     }
     final controller = _controller;
-    if (controller == null) {
+    if (controller == null || !_controllerAvailable) {
       return;
     }
     final targetUri = await _resolveWebUri(normalizedUrl);
     if (targetUri == null) {
       return;
     }
-    await controller.loadUrl(
-      urlRequest: URLRequest(url: WebUri.uri(targetUri)),
+    await _safeWebViewCall(
+      () => controller.loadUrl(
+        urlRequest: URLRequest(url: WebUri.uri(targetUri)),
+      ),
     );
   }
 
@@ -143,7 +154,10 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
       return parsed;
     }
 
-    final currentUri = await _controller?.getUrl();
+    final controller = _controller;
+    final currentUri = controller == null
+        ? null
+        : await _safeWebViewCall(() => controller.getUrl());
     if (currentUri != null) {
       return currentUri.resolveUri(parsed);
     }
@@ -156,7 +170,17 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
   }
 
   Future<void> _handleBackPressed() async {
-    final currentUrl = (await _controller?.getUrl())?.toString().trim() ?? '';
+    final controller = _controller;
+    final currentUrl =
+        (controller == null
+                ? null
+                : await _safeWebViewCall(() => controller.getUrl()))
+            ?.toString()
+            .trim() ??
+        '';
+    if (!context.mounted) {
+      return;
+    }
     if (currentUrl.contains('Overproof')) {
       final productId = AppPush.readProductIdFromUrl(currentUrl);
       await AppPush.showRetainPopupThen(
@@ -174,6 +198,30 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
       return;
     }
     AppPush.pop(context);
+  }
+
+  Future<T?> _safeWebViewCall<T>(Future<T> Function() action) async {
+    if (!_controllerAvailable) {
+      return null;
+    }
+    try {
+      return await action();
+    } on MissingPluginException {
+      _markControllerUnavailable();
+      return null;
+    } on PlatformException catch (error) {
+      if (error.code == 'channel-error' ||
+          error.message?.contains('getUrl') == true) {
+        _markControllerUnavailable();
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  void _markControllerUnavailable() {
+    _controllerAvailable = false;
+    _controller = null;
   }
 
   Future<NavigationActionPolicy> _handleShouldOverrideUrlLoading(
@@ -246,8 +294,14 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
                     _loading = true;
                     _loadFailed = false;
                   });
-                  await _controller?.loadUrl(
-                    urlRequest: URLRequest(url: WebUri.uri(uri)),
+                  final controller = _controller;
+                  if (controller == null || !_controllerAvailable) {
+                    return;
+                  }
+                  await _safeWebViewCall(
+                    () => controller.loadUrl(
+                      urlRequest: URLRequest(url: WebUri.uri(uri)),
+                    ),
                   );
                 },
               )
@@ -269,6 +323,7 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
                     ),
                     onWebViewCreated: (controller) {
                       _controller = controller;
+                      _controllerAvailable = true;
                       _syncJsBridgeState();
                     },
                     onReceivedServerTrustAuthRequest:

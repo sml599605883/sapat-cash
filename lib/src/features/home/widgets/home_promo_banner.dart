@@ -1,15 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:sapat_cash/src/core/network/api/api_client.dart';
 
 import '../../../core/layout/screen.dart';
 import '../../../core/push/app_push.dart';
 import '../home_models.dart';
 
 class HomePromoBanner extends StatefulWidget {
-  const HomePromoBanner({super.key, this.section});
+  const HomePromoBanner({super.key, this.banners = const []});
 
-  final HomeSection? section;
+  final List<HomeBannerItem> banners;
 
   @override
   State<HomePromoBanner> createState() => _HomePromoBannerState();
@@ -22,11 +23,8 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
   Timer? _autoPlayTimer;
   int _currentIndex = 0;
 
-  List<HomeSectionItem> get _banners =>
-      widget.section?.items
-          .where((item) => item.imageUrl?.trim().isNotEmpty == true)
-          .toList() ??
-      const [];
+  List<HomeBannerItem> get _banners =>
+      widget.banners.where((item) => item.imageUrl.trim().isNotEmpty).toList();
 
   @override
   void initState() {
@@ -37,7 +35,7 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
   @override
   void didUpdateWidget(covariant HomePromoBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.section != widget.section) {
+    if (oldWidget.banners != widget.banners) {
       _currentIndex = 0;
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
@@ -85,7 +83,7 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
       return _BannerImage(
         width: width,
         height: height,
-        imageUrl: banners.first.imageUrl!,
+        imageUrl: banners.first.imageUrl,
         onTap: () => _handleBannerTap(banners.first),
       );
     }
@@ -105,7 +103,7 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
             return _BannerImage(
               width: width,
               height: height,
-              imageUrl: banners[index].imageUrl!,
+              imageUrl: banners[index].imageUrl,
               onTap: () => _handleBannerTap(banners[index]),
             );
           },
@@ -114,12 +112,17 @@ class _HomePromoBannerState extends State<HomePromoBanner> {
     );
   }
 
-  void _handleBannerTap(HomeSectionItem item) {
-    final productId = item.productId?.trim() ?? '';
-    if (productId.isEmpty) {
+  void _handleBannerTap(HomeBannerItem item) {
+    final link = item.link.trim();
+    if (link.isEmpty) {
       return;
     }
-    AppPush.productDetail(context, productId: productId);
+    if (item.bannerConfigId.isNotEmpty) {
+      apiService.uploadBannerClickRecord(
+        bannerConfigId: item.bannerConfigId.trim(),
+      );
+    }
+    AppPush.pushWebView(context, url: link);
   }
 }
 
