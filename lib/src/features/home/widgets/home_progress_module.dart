@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -15,19 +17,66 @@ class HomeProgressModule extends StatefulWidget {
 }
 
 class _HomeProgressModuleState extends State<HomeProgressModule> {
-  late final PageController _pageController;
+  static const _interval = Duration(seconds: 3);
+
+  late PageController _pageController;
+  Timer? _autoPlayTimer;
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.915);
+    _pageController = _buildPageController();
+    _syncAutoPlay();
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    final previousPage = _currentPage;
+    _pageController.dispose();
+    _pageController = _buildPageController(initialPage: previousPage);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeProgressModule oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.items != widget.items) {
+      _currentPage = 0;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+      _syncAutoPlay();
+    }
   }
 
   @override
   void dispose() {
+    _autoPlayTimer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  PageController _buildPageController({int initialPage = 0}) {
+    return PageController(initialPage: initialPage);
+  }
+
+  void _syncAutoPlay() {
+    _autoPlayTimer?.cancel();
+    if (widget.items.length <= 1) {
+      return;
+    }
+    _autoPlayTimer = Timer.periodic(_interval, (_) {
+      if (!mounted || !_pageController.hasClients) {
+        return;
+      }
+      final nextPage = (_currentPage + 1) % widget.items.length;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   @override
@@ -40,7 +89,11 @@ class _HomeProgressModuleState extends State<HomeProgressModule> {
     final palette = Theme.of(context).extension<AppPalette>()!;
 
     return Padding(
-      padding: EdgeInsets.only(top: screen.dp(16)),
+      padding: EdgeInsets.only(
+        top: screen.dp(16),
+        left: screen.dp(16),
+        right: screen.dp(16),
+      ),
       child: Column(
         children: [
           SizedBox(
