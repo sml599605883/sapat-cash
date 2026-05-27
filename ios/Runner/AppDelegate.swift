@@ -27,6 +27,7 @@ import UserNotifications
   private var locationRequestInFlight = false
   private var locationTimeoutWorkItem: DispatchWorkItem?
   private var pushToken: String = ""
+  private var pendingPushRoutes: [String] = []
 
   override func application(
     _ application: UIApplication,
@@ -468,12 +469,40 @@ import UserNotifications
 
   func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
     eventSink = events
+    flushPendingPushRoutesIfNeeded()
     return nil
   }
 
   func onCancel(withArguments arguments: Any?) -> FlutterError? {
     eventSink = nil
     return nil
+  }
+
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let userInfo = notification.request.content.userInfo
+    guard let url = extractPushUrl(from: userInfo) else {
+      completionHandler([.banner, .badge, .sound])
+      return
+    }
+    sendPushRouteToFlutter(url)
+    completionHandler([])
+  }
+
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    defer { completionHandler() }
+    let userInfo = response.notification.request.content.userInfo
+    guard let url = extractPushUrl(from: userInfo) else {
+      return
+    }
+    sendPushRouteToFlutter(url)
   }
 
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -624,6 +653,53 @@ import UserNotifications
     var seen = Set<String>()
     let uniqueParts = parts.filter { seen.insert($0).inserted }
     return uniqueParts.joined(separator: " ")
+  }
+
+  private func extractPushUrl(from userInfo: [AnyHashable: Any]) -> String? {
+    if let url = normalizedPushUrl(userInfo["url"]) {
+      return url
+    }
+
+    if let params = userInfo["params"] as? [AnyHashable: Any],
+       let url = normalizedPushUrl(params["url"]) {
+      return url
+    }
+
+    if let paramsText = userInfo["params"] as? String,
+       let data = paramsText.data(using: .utf8),
+       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+       let url = normalizedPushUrl(json["url"]) {
+      return url
+    }
+
+    return nil
+  }
+
+  private func normalizedPushUrl(_ rawValue: Any?) -> String? {
+    guard let value = rawValue as? String else {
+      return nil
+    }
+    let url = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return url.isEmpty ? nil : url
+  }
+
+  private func sendPushRouteToFlutter(_ url: String) {
+    if let eventSink {
+      eventSink(["type": "push_route", "url": url])
+      return
+    }
+    pendingPushRoutes.append(url)
+  }
+
+  private func flushPendingPushRoutesIfNeeded() {
+    guard let eventSink, !pendingPushRoutes.isEmpty else {
+      return
+    }
+    let routes = pendingPushRoutes
+    pendingPushRoutes.removeAll()
+    for route in routes {
+      eventSink(["type": "push_route", "url": route])
+    }
   }
 
   private func buildFullAddress(from placemark: CLPlacemark?) -> String {

@@ -16,6 +16,7 @@ import '../../features/auth/auth_controller.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/main_tab/main_tab_controller.dart';
 import '../../features/mine/account_page.dart';
+import '../../features/orders/order_list_page.dart';
 import '../../features/product/product_detail_model.dart';
 import '../../features/recredit/waiting_credit_page.dart';
 import '../../features/verification/pages/bind_card_page.dart';
@@ -821,11 +822,32 @@ final class AppPush {
         if (balsamic.isEmpty) {
           return false;
         }
-        debugPrint('order list type: $balsamic');
+        await pushOrderListWithNavigator(
+          navigator,
+          type: _resolveOrderListType(balsamic),
+        );
         return true;
       default:
         return false;
     }
+  }
+
+  static Future<void> pushOrderList(
+    BuildContext context, {
+    required OrderListType type,
+  }) {
+    return pushOrderListWithNavigator(Navigator.of(context), type: type);
+  }
+
+  static Future<void> pushOrderListWithNavigator(
+    NavigatorState navigator, {
+    required OrderListType type,
+  }) {
+    return pushWithNavigator<void>(
+      navigator,
+      page: OrderListPage(initialType: type),
+      routeName: OrderListPage.routeName,
+    );
   }
 
   static Future<bool> _handleInternalProductRoute(
@@ -931,6 +953,24 @@ final class AppPush {
   static String _readBalsamicFromUri(Uri uri) {
     const keys = ['balsamic', 'type'];
     return _readFirstNonEmptyQueryValue(uri, keys);
+  }
+
+  static OrderListType _resolveOrderListType(String rawType) {
+    switch (rawType.trim()) {
+      case '7':
+      case 'outstanding':
+        return OrderListType.outstanding;
+      case '6':
+      case 'overdue':
+        return OrderListType.overdue;
+      case '5':
+      case 'settled':
+        return OrderListType.settled;
+      case '4':
+      case 'all':
+      default:
+        return OrderListType.all;
+    }
   }
 
   static bool _shouldOpenInWebView(Uri uri) {
