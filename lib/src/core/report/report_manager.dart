@@ -174,7 +174,7 @@ class ReportManager {
     }
     try {
       final snapshot = await ReportNativeBridge.getDeviceSnapshot();
-      final location = await _resolveLocationWithCacheFallback();
+      final location = await getCurrentLocation();
       final lastLoginAt = await ReportCache.getLoginAt();
       final encrypted = await ReportPayloadHelper.buildEncryptedDevicePayload(
         snapshot: snapshot,
