@@ -325,7 +325,7 @@ class _ProgressCard extends StatelessWidget {
     try {
       final response = await apiService.fetchAccountList(productId: productId);
       final accountList = response.json['noniron'].listValue;
-      final claviform = await AppPush.pushWithNavigator<String>(
+      await AppPush.pushWithNavigator<void>(
         navigator,
         page: accountList.isNotEmpty
             ? BankAccountListPage(productId: productId, orderNo: orderNo)
@@ -338,14 +338,6 @@ class _ProgressCard extends StatelessWidget {
             ? BankAccountListPage.routeName
             : BindCardPage.routeName,
       );
-      if (!navigator.mounted) {
-        return;
-      }
-      final normalizedUrl = claviform?.trim() ?? '';
-      if (normalizedUrl.isEmpty) {
-        return;
-      }
-      await AppPush.openWebUriWithNavigator(navigator, rawUrl: normalizedUrl);
     } catch (error) {
       if (!navigator.mounted) {
         return;

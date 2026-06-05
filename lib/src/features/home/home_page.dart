@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/json/json.dart';
 import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/core/error_message_adapter.dart';
@@ -14,10 +15,23 @@ import 'widgets/home_progress_module.dart';
 import 'widgets/home_recommendation_list.dart';
 import 'widgets/home_top_section.dart';
 
+typedef HomeDataFetcher = Future<AppHomeResponse?> Function();
+typedef HomePopupFetcher = Future<Json> Function();
+typedef HomePopupPresenter =
+    Future<void> Function(BuildContext context, Json popupPayload);
+
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({
+    super.key,
+    this.fetchHomeData,
+    this.fetchPopupPayload,
+    this.showPopup,
+  });
 
   static const routeName = RouteNames.home;
+  final HomeDataFetcher? fetchHomeData;
+  final HomePopupFetcher? fetchPopupPayload;
+  final HomePopupPresenter? showPopup;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -57,19 +71,17 @@ class _HomePageState extends State<HomePage> {
     _lastRefreshToken = refreshToken;
     EasyLoading.show();
     try {
-      final results = await Future.wait([
-        apiService.fetchAppHome(),
-        apiService.fetchPopup(scene: 1),
+      final results = await Future.wait<dynamic>([
+        _fetchHomeData(),
+        _fetchPopupPayload(),
       ]);
-      _homeData = results.first.data as AppHomeResponse?;
-      final popupResponse = results[1];
+      _homeData = results.first as AppHomeResponse?;
+      final popupResponse = results[1] as Json;
+      EasyLoading.dismiss();
       if (!_popupShowing && mounted) {
         _popupShowing = true;
         try {
-          await FetchPopupHandler.showIfNeeded(
-            context,
-            json: popupResponse.json,
-          );
+          await _showPopup(popupResponse);
         } finally {
           _popupShowing = false;
         }
@@ -83,6 +95,30 @@ class _HomePageState extends State<HomePage> {
       _loading = false;
       EasyLoading.dismiss();
     }
+  }
+
+  Future<AppHomeResponse?> _fetchHomeData() async {
+    final fetcher = widget.fetchHomeData;
+    if (fetcher != null) {
+      return fetcher();
+    }
+    return (await apiService.fetchAppHome()).data;
+  }
+
+  Future<Json> _fetchPopupPayload() async {
+    final fetcher = widget.fetchPopupPayload;
+    if (fetcher != null) {
+      return fetcher();
+    }
+    return (await apiService.fetchPopup(scene: 1)).json;
+  }
+
+  Future<void> _showPopup(Json popupPayload) {
+    final presenter = widget.showPopup;
+    if (presenter != null) {
+      return presenter(context, popupPayload);
+    }
+    return FetchPopupHandler.showIfNeeded(context, json: popupPayload);
   }
 
   @override

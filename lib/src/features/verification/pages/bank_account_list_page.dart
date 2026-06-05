@@ -18,7 +18,7 @@ class BankAccountListPage extends StatefulWidget {
     required this.orderNo,
   });
 
-  static const routeName = '/verification/bank-account-list';
+  static const routeName = RouteNames.bankAccountList;
 
   final String productId;
   final String orderNo;
@@ -73,7 +73,7 @@ class _BankAccountListPageState extends State<BankAccountListPage> {
   }
 
   Future<void> _handleAddOtherPaymentMethods() async {
-    final claviform = await AppPush.push<String>(
+    await AppPush.push<void>(
       context,
       page: BindCardPage(
         productId: widget.productId,
@@ -82,14 +82,6 @@ class _BankAccountListPageState extends State<BankAccountListPage> {
       ),
       routeName: RouteNames.bindCard,
     );
-    if (!mounted) {
-      return;
-    }
-    final normalizedUrl = claviform?.trim() ?? '';
-    if (normalizedUrl.isEmpty) {
-      return;
-    }
-    AppPush.pop(context, normalizedUrl);
   }
 
   Future<void> _handleConfirm() async {
@@ -106,16 +98,34 @@ class _BankAccountListPageState extends State<BankAccountListPage> {
       if (!mounted) {
         return;
       }
-      if (claviform.isEmpty) {
-        EasyLoading.showToast('Missing claviform');
-        return;
-      }
-      AppPush.pop(context, claviform);
+      await _openResultWebOrFallback(claviform);
     } catch (error) {
       EasyLoading.showToast(ErrorMessageAdapter.resolve(error));
     } finally {
       EasyLoading.dismiss();
     }
+  }
+
+  Future<void> _openResultWebOrFallback(String rawUrl) async {
+    final navigator = Navigator.of(context);
+    final normalizedUrl = rawUrl.trim();
+    if (normalizedUrl.isNotEmpty) {
+      final opened = await AppPush.openChangeAccountResultWebUriWithNavigator(
+        navigator,
+        rawUrl: normalizedUrl,
+      );
+      if (!opened && mounted) {
+        EasyLoading.showToast('Unable to open link');
+      }
+      return;
+    }
+    await AppPush.clickApply(
+      context,
+      productId: widget.productId.trim(),
+      removeRouteNamesOnSuccess: AppPush.changeAccountCleanupRouteNames(
+        const <String>[],
+      ),
+    );
   }
 
   @override

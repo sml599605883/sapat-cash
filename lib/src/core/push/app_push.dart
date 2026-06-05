@@ -744,6 +744,12 @@ final class AppPush {
     return _verificationFlowHistoryBefore(routeName);
   }
 
+  static List<String> changeAccountCleanupRouteNames(
+    Iterable<String> extraRouteNames,
+  ) {
+    return _changeAccountCleanupRouteNames(extraRouteNames);
+  }
+
   static List<String> _verificationFlowHistoryBefore(String routeName) {
     final normalizedRouteName = routeName.trim();
     if (!_verificationFlowRouteSequence.contains(normalizedRouteName)) {
@@ -816,6 +822,22 @@ final class AppPush {
       _removeRoutesWithNavigator(navigator, normalizedRemoveRouteNames);
     }
     return opened;
+  }
+
+  static Future<bool> openChangeAccountResultWebUriWithNavigator(
+    NavigatorState navigator, {
+    Uri? uri,
+    String? rawUrl,
+    String? title,
+    List<String> removeRouteNames = const <String>[],
+  }) {
+    return openWebUriWithNavigator(
+      navigator,
+      uri: uri,
+      rawUrl: rawUrl,
+      title: title,
+      removeRouteNames: _changeAccountCleanupRouteNames(removeRouteNames),
+    );
   }
 
   static Future<bool> openUrlInBrowserWithNavigator(
@@ -1088,6 +1110,16 @@ final class AppPush {
       ..._normalizeRouteNames(extraRouteNames),
     };
     return merged.toList(growable: false);
+  }
+
+  static List<String> _changeAccountCleanupRouteNames(
+    Iterable<String> extraRouteNames,
+  ) {
+    return _mergeRouteNames(const <String>[
+      RouteNames.webView,
+      RouteNames.bindCard,
+      RouteNames.bankAccountList,
+    ], extraRouteNames);
   }
 }
 

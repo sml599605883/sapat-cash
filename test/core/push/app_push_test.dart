@@ -39,5 +39,38 @@ void main() {
         ]),
       );
     });
+
+    test('includes change-account cleanup names when reopening webview', () {
+      final routeNames = AppPush.changeAccountCleanupRouteNames(
+        const <String>[RouteNames.webView, RouteNames.bindCard],
+      );
+
+      expect(
+        routeNames,
+        containsAll(<String>[
+          RouteNames.webView,
+          RouteNames.bindCard,
+          RouteNames.bankAccountList,
+        ]),
+      );
+      expect(routeNames.where((name) => name == RouteNames.webView).length, 1);
+    });
+
+    test('deduplicates change-account cleanup route names', () {
+      final routeNames = AppPush.changeAccountCleanupRouteNames(
+        const <String>[
+          RouteNames.webView,
+          RouteNames.bindCard,
+          RouteNames.bankAccountList,
+        ],
+      );
+
+      expect(routeNames.where((name) => name == RouteNames.webView).length, 1);
+      expect(routeNames.where((name) => name == RouteNames.bindCard).length, 1);
+      expect(
+        routeNames.where((name) => name == RouteNames.bankAccountList).length,
+        1,
+      );
+    });
   });
 }

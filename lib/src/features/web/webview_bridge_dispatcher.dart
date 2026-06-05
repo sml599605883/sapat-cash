@@ -116,7 +116,7 @@ class WebViewBridgeDispatcher {
           if (orderNo.isEmpty) {
             return WebViewBridgeResult.failure('Missing orderNo');
           }
-          final claviform = await AppPush.push<String>(
+          await AppPush.push<void>(
             context,
             page: accountList.isNotEmpty
                 ? BankAccountListPage(productId: productId, orderNo: orderNo)
@@ -129,11 +129,6 @@ class WebViewBridgeDispatcher {
                 ? BankAccountListPage.routeName
                 : BindCardPage.routeName,
           );
-          final normalizedUrl = claviform?.trim() ?? '';
-          if (normalizedUrl.isEmpty) {
-            return WebViewBridgeResult.failure('Missing claviform');
-          }
-          await reloadOrOpenInWebView(normalizedUrl);
           return WebViewBridgeResult.success();
         default:
           return WebViewBridgeResult.failure(

@@ -458,7 +458,7 @@ class _BindCardPageState extends State<BindCardPage> {
         if (!mounted) {
           return;
         }
-        AppPush.pop(context, claviform);
+        await _openChangeAccountResultWebOrFallback(claviform);
         return;
       }
 
@@ -476,6 +476,28 @@ class _BindCardPageState extends State<BindCardPage> {
     } finally {
       EasyLoading.dismiss();
     }
+  }
+
+  Future<void> _openChangeAccountResultWebOrFallback(String rawUrl) async {
+    final navigator = Navigator.of(context);
+    final normalizedUrl = rawUrl.trim();
+    if (normalizedUrl.isNotEmpty) {
+      final opened = await AppPush.openChangeAccountResultWebUriWithNavigator(
+        navigator,
+        rawUrl: normalizedUrl,
+      );
+      if (!opened && mounted) {
+        EasyLoading.showToast('Unable to open link');
+      }
+      return;
+    }
+    await AppPush.clickApply(
+      context,
+      productId: widget.productId.trim(),
+      removeRouteNamesOnSuccess: AppPush.changeAccountCleanupRouteNames(
+        const <String>[],
+      ),
+    );
   }
 
   Future<void> _startFaceVerification() async {
@@ -603,6 +625,14 @@ class _BindCardPageState extends State<BindCardPage> {
     );
   }
 
+  void _handleBackPressed() {
+    if (widget.isChangeBankCard) {
+      AppPush.pop(context);
+      return;
+    }
+    AppPush.popToHomeTabbar(context);
+  }
+
   @override
   void dispose() {
     _removeBorderlandsOverlay();
@@ -636,7 +666,7 @@ class _BindCardPageState extends State<BindCardPage> {
         if (didPop) {
           return;
         }
-        AppPush.popToHomeTabbar(context);
+        _handleBackPressed();
       },
       child: DismissKeyboard(
         child: Scaffold(
@@ -703,7 +733,7 @@ class _BindCardPageState extends State<BindCardPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _Header(
-                            onBack: () => AppPush.popToHomeTabbar(context),
+                            onBack: _handleBackPressed,
                           ),
                           SizedBox(height: screen.dp(16)),
                           VerificationHintRow(message: hintMessage),
