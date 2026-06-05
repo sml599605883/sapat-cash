@@ -264,13 +264,24 @@ import UserNotifications
     }
     
   private func currentCarrierName() -> String {
-    let networkInfo = CTTelephonyNetworkInfo()
-    if #available(iOS 12.0, *) {
-      return networkInfo.serviceSubscriberCellularProviders?.values
-        .compactMap { $0.carrierName?.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .first(where: { !$0.isEmpty }) ?? ""
-    }
-    return networkInfo.subscriberCellularProvider?.carrierName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      let networkInfo = CTTelephonyNetworkInfo()
+      var carrierName = ""
+      if #available(iOS 12.0, *) {
+          if let carriers = networkInfo.serviceSubscriberCellularProviders {
+              if carriers.values.first?.isoCountryCode == nil {
+                  carrierName = ""
+              } else {
+                  carrierName = carriers.values.first?.carrierName ?? ""
+              }
+          }
+      } else {
+          if networkInfo.subscriberCellularProvider?.isoCountryCode == nil {
+              carrierName = ""
+          } else {
+              carrierName = networkInfo.subscriberCellularProvider?.carrierName ?? ""
+          }
+      }
+      return carrierName
   }
 
   private func currentNetworkType() -> String {
@@ -375,14 +386,20 @@ import UserNotifications
   }
 
   private func isUsingVpn() -> Bool {
-    let interfaceNames = activeInterfaceNames()
-    return interfaceNames.contains { name in
-      name.hasPrefix("tap") ||
-        name.hasPrefix("tun") ||
-        name.hasPrefix("ppp") ||
-        name.hasPrefix("ipsec") ||
-        name.hasPrefix("utun")
-    }
+      guard
+          let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue()
+              as? [String: Any],
+          let scoped = settings["__SCOPED__"] as? [String: Any]
+      else {
+          return false
+      }
+
+      let keys = scoped.keys.map { $0.lowercased() }
+      let isVPN = keys.contains { key in
+          key.contains("tap") || key.contains("tun") || key.contains("ppp")
+              || key.contains("ipsec") || key.contains("utun")
+      }
+      return isVPN
   }
 
   private func buildStoragePayload() -> (available: String, total: String) {
@@ -625,6 +642,7 @@ import UserNotifications
   ) -> [String: Any] {
     [
       "province": placemark?.administrativeArea ?? "",
+      "subAdminArea": placemark?.subAdministrativeArea ?? "",
       "fullAddress": buildFullAddress(from: placemark),
       "countryCode": placemark?.isoCountryCode ?? "",
       "country": placemark?.country ?? "",

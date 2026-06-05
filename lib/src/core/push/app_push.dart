@@ -210,11 +210,20 @@ final class AppPush {
   static Future<T?> pushIdentityVerification<T>(
     BuildContext context, {
     required String productId,
+    List<String> removeRouteNames = const <String>[],
   }) {
-    return push<T>(
+    if (removeRouteNames.isEmpty) {
+      return push<T>(
+        context,
+        page: IdentityVerificationPage(productId: productId),
+        routeName: RouteNames.identityVerification,
+      );
+    }
+    return pushAndRemoveRoutes<T>(
       context,
       page: IdentityVerificationPage(productId: productId),
       routeName: RouteNames.identityVerification,
+      removeRouteNames: removeRouteNames,
     );
   }
 
@@ -255,9 +264,12 @@ final class AppPush {
     BuildContext context, {
     required String productId,
     String? apiremind,
+    List<String> removeRouteNamesOnSuccess = const <String>[],
   }) async {
+    EasyLoading.show();
     final normalizedProductId = productId.trim();
     if (normalizedProductId.isEmpty) {
+      EasyLoading.dismiss();
       return;
     }
 
@@ -265,15 +277,20 @@ final class AppPush {
     final authController = navigator.context.read<AuthController>();
     await authController.ensureInitialized();
     if (!authController.isLoggedIn) {
+      EasyLoading.dismiss();
       await pushLoginWithNavigator(navigator);
       return;
     }
     final canContinue = await _ensureLocationAccessForApply();
     if (!canContinue) {
+      EasyLoading.dismiss();
       return;
     }
 
     ReportManager.instance.reportNativeLocation();
+    final normalizedRemoveRouteNames = _normalizeRouteNames(
+      removeRouteNamesOnSuccess,
+    ).toList(growable: false);
     EasyLoading.show();
     try {
       final response = await apiService.clickApply(
@@ -288,6 +305,7 @@ final class AppPush {
         final opened = await openWebUriWithNavigator(
           navigator,
           rawUrl: oreides,
+          removeRouteNames: normalizedRemoveRouteNames,
         );
         if (!opened) {
           throw const BusinessException('Unable to open link');
@@ -300,7 +318,10 @@ final class AppPush {
         final detailResponse = await apiService.productDetail(
           productId: normalizedProductId,
         );
-        await _handleProductDetailLanding(detailResponse.data);
+        await _handleProductDetailLanding(
+          detailResponse.data,
+          removeRouteNames: normalizedRemoveRouteNames,
+        );
         return;
       }
 
@@ -490,26 +511,35 @@ final class AppPush {
   }
 
   static Future<void> _handleProductDetailLanding(
-    ProductDetailModel? detail,
-  ) async {
+    ProductDetailModel? detail, {
+    List<String> removeRouteNames = const <String>[],
+  }) async {
     if (detail == null) {
       return;
     }
 
     if (detail.profiteers.isNull()) {
-      await _openOrderLandingByDetail(detail);
+      await _openOrderLandingByDetail(
+        detail,
+        removeRouteNames: removeRouteNames,
+      );
       return;
     }
 
     final derms = detail.profiteers['derms'].stringOrNull?.trim() ?? '';
     // `derms` is the backend-driven next-step marker for the apply flow.
-    await _handleProfiteersDerms(detail, derms);
+    await _handleProfiteersDerms(
+      detail,
+      derms,
+      removeRouteNames: removeRouteNames,
+    );
   }
 
   static Future<void> _handleProfiteersDerms(
     ProductDetailModel detail,
-    String derms,
-  ) async {
+    String derms, {
+    List<String> removeRouteNames = const <String>[],
+  }) async {
     final currentContext = SapatCashApp.navigatorKey.currentContext;
     if (currentContext == null) {
       return;
@@ -520,6 +550,7 @@ final class AppPush {
         await pushIdentityVerification(
           currentContext,
           productId: detail.productId,
+          removeRouteNames: removeRouteNames,
         );
         return;
       case 'AsunderSabir':
@@ -528,6 +559,7 @@ final class AppPush {
           currentContext,
           page: const FaceVerificationPage(),
           routeName: RouteNames.faceVerification,
+          removeRouteNames: removeRouteNames,
         );
         return;
       case 'Liquidating':
@@ -535,6 +567,7 @@ final class AppPush {
           currentContext,
           page: PersonalInformationPage(productId: detail.productId),
           routeName: RouteNames.personalInformation,
+          removeRouteNames: removeRouteNames,
         );
         return;
       case 'AtrophyAlertest':
@@ -542,6 +575,7 @@ final class AppPush {
           currentContext,
           page: WorkInformationPage(productId: detail.productId),
           routeName: RouteNames.workInformation,
+          removeRouteNames: removeRouteNames,
         );
         return;
       case 'InwardnessCapturer':
@@ -549,6 +583,7 @@ final class AppPush {
           currentContext,
           page: ContactInformationPage(productId: detail.productId),
           routeName: RouteNames.contactInformation,
+          removeRouteNames: removeRouteNames,
         );
         return;
       case 'Cakewalked':
@@ -559,6 +594,7 @@ final class AppPush {
             orderNo: detail.orderNo,
           ),
           routeName: RouteNames.bindCard,
+          removeRouteNames: removeRouteNames,
         );
         return;
       default:
@@ -567,8 +603,9 @@ final class AppPush {
   }
 
   static Future<void> _openOrderLandingByDetail(
-    ProductDetailModel detail,
-  ) async {
+    ProductDetailModel detail, {
+    List<String> removeRouteNames = const <String>[],
+  }) async {
     final currentContext = SapatCashApp.navigatorKey.currentContext;
     if (currentContext == null) {
       return;
@@ -599,7 +636,11 @@ final class AppPush {
       return;
     }
 
-    final opened = await openWebUriWithNavigator(navigator, rawUrl: oreides);
+    final opened = await openWebUriWithNavigator(
+      navigator,
+      rawUrl: oreides,
+      removeRouteNames: removeRouteNames,
+    );
     if (!opened) {
       throw const BusinessException('Unable to open link');
     }
@@ -617,6 +658,7 @@ final class AppPush {
       if (context == null || !context.mounted) {
         return false;
       }
+      EasyLoading.dismiss();
       final goToService = await _showPermissionPromptDialog(
         context,
         title: 'Location service required',
@@ -676,26 +718,38 @@ final class AppPush {
     BuildContext context, {
     required Widget page,
     required String routeName,
+    List<String> removeRouteNames = const <String>[],
   }) {
     return pushAndRemoveRoutes(
       context,
       page: page,
       routeName: routeName,
-      removeRouteNames: _verificationFlowHistoryBefore(routeName),
+      removeRouteNames: _mergeRouteNames(
+        _verificationFlowHistoryBefore(routeName),
+        removeRouteNames,
+      ),
     );
+  }
+
+  @visibleForTesting
+  static List<String> mergeRouteNamesForTest(
+    Iterable<String> routeNames,
+    Iterable<String> extraRouteNames,
+  ) {
+    return _mergeRouteNames(routeNames, extraRouteNames);
+  }
+
+  @visibleForTesting
+  static List<String> verificationFlowHistoryForTest(String routeName) {
+    return _verificationFlowHistoryBefore(routeName);
   }
 
   static List<String> _verificationFlowHistoryBefore(String routeName) {
     final normalizedRouteName = routeName.trim();
-    final routeIndex = _verificationFlowRouteSequence.indexOf(
-      normalizedRouteName,
-    );
-    if (routeIndex <= 0) {
+    if (!_verificationFlowRouteSequence.contains(normalizedRouteName)) {
       return const <String>[];
     }
-    return _verificationFlowRouteSequence
-        .take(routeIndex)
-        .toList(growable: false);
+    return _verificationFlowRouteSequence.toList(growable: false);
   }
 
   static Set<String> _normalizeRouteNames(Iterable<String> routeNames) {
@@ -729,12 +783,17 @@ final class AppPush {
     Uri? uri,
     String? rawUrl,
     String? title,
+    List<String> removeRouteNames = const <String>[],
   }) async {
     final resolvedUri = uri ?? _tryParseUri(rawUrl ?? '');
     if (resolvedUri == null) {
       return false;
     }
+    final normalizedRemoveRouteNames = _normalizeRouteNames(
+      removeRouteNames,
+    ).toList(growable: false);
     if (await handleInternalScheme(navigator, resolvedUri)) {
+      _removeRoutesWithNavigator(navigator, normalizedRemoveRouteNames);
       return true;
     }
     if (_shouldOpenInWebView(resolvedUri)) {
@@ -745,11 +804,18 @@ final class AppPush {
           initialTitle: title,
         ),
         routeName: RouteNames.webView,
-        removeRouteNames: _verificationFlowRouteSequence,
+        removeRouteNames: _mergeRouteNames(
+          _verificationFlowRouteSequence,
+          normalizedRemoveRouteNames,
+        ),
       );
       return true;
     }
-    return openExternalUri(resolvedUri);
+    final opened = await openExternalUri(resolvedUri);
+    if (opened) {
+      _removeRoutesWithNavigator(navigator, normalizedRemoveRouteNames);
+    }
+    return opened;
   }
 
   static Future<bool> openUrlInBrowserWithNavigator(
@@ -1011,6 +1077,17 @@ final class AppPush {
       }
     }
     return '';
+  }
+
+  static List<String> _mergeRouteNames(
+    Iterable<String> routeNames,
+    Iterable<String> extraRouteNames,
+  ) {
+    final merged = <String>{
+      ..._normalizeRouteNames(routeNames),
+      ..._normalizeRouteNames(extraRouteNames),
+    };
+    return merged.toList(growable: false);
   }
 }
 

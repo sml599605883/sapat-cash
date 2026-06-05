@@ -252,7 +252,7 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final screen = context.screen;
     final palette = HomeRecommendationList._palette(context);
-    final isFeatured = item.isMainProduct == true;
+    final isFeatured = item.isButtonDisabled == true;
     final productId = item.productId?.trim() ?? '';
     final disabled = item.isButtonDisabled || productId.isEmpty;
     final buttonText = item.buttonText?.trim().isNotEmpty == true

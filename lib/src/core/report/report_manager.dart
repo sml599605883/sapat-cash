@@ -221,10 +221,11 @@ class ReportManager {
 
   Future<void> reportFaceResult(FaceReportPayload payload) async {
     try {
-      await apiService.reportApp(
-        reportType: 2,
-        payload:
-            '${payload.livenessId}|${payload.requestId}|${payload.resultCode}|${payload.resultMessage}',
+      await apiService.reportTongdun(
+        livenessId: payload.livenessId,
+        requestId: payload.requestId,
+        resultCode: payload.resultCode,
+        result: payload.resultMessage,
       );
     } catch (error) {
       _log(error);

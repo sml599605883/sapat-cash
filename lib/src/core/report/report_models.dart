@@ -1,6 +1,7 @@
 class ReportLocation {
   const ReportLocation({
     this.province,
+    this.locality,
     required this.fullAddress,
     required this.countryCode,
     required this.country,
@@ -12,6 +13,7 @@ class ReportLocation {
   });
 
   final String? province;
+  final String? locality;
   final String fullAddress;
   final String countryCode;
   final String country;
@@ -23,6 +25,7 @@ class ReportLocation {
 
   bool get isEmpty =>
       province == null &&
+      locality == null &&
       fullAddress.isEmpty &&
       countryCode.isEmpty &&
       country.isEmpty &&
@@ -42,6 +45,7 @@ class ReportLocation {
   Map<String, dynamic> toCacheMap() {
     return {
       'province': province,
+      'locality': locality,
       'fullAddress': fullAddress,
       'countryCode': countryCode,
       'country': country,
@@ -56,6 +60,7 @@ class ReportLocation {
   factory ReportLocation.fromCacheMap(Map<String, dynamic> map) {
     return ReportLocation(
       province: map['province'] as String?,
+      locality: map['subAdminArea'] as String?,
       fullAddress: '${map['fullAddress'] ?? ''}',
       countryCode: '${map['countryCode'] ?? ''}',
       country: '${map['country'] ?? ''}',

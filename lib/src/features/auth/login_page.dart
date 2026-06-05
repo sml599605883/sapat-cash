@@ -95,6 +95,10 @@ class _LoginViewState extends State<_LoginView> {
 
   Future<void> _handleSubmit() async {
     final controller = context.read<LoginController>();
+    if (!controller.canSubmitLogin()) {
+      EasyLoading.showToast('Please agree to the Privacy Policy first');
+      return;
+    }
     final phone = _phoneController.text;
     final code = _codeController.text;
     FocusScope.of(context).unfocus();
@@ -304,7 +308,7 @@ class _LoginViewState extends State<_LoginView> {
                                 ? '${controller.countdown}s'
                                 : controller.sendingCode
                                 ? '...'
-                                : 'Send',
+                                : 'Get Code',
                             style: TextStyle(
                               color: const Color(0xFFF45834),
                               fontSize: screen.dp(14),

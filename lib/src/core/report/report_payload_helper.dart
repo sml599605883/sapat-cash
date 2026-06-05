@@ -68,7 +68,7 @@ class ReportPayloadHelper {
           'paperclips': normalize(location?.countryCode),
           'thionins': normalize(location?.province),
           'baseboards': normalize(location?.city),
-          'crural': normalize(location?.longitude),
+          'crural': normalize(location?.locality),
           'compeller': normalize(location?.street),
         },
       },

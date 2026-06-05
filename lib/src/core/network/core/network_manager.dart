@@ -2,13 +2,21 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../app/app.dart';
 import '../config/network_bootstrapper.dart';
 import '../config/network_config.dart';
 import '../crypto/encryption_helper.dart';
 import '../protocol/common_param_keys.dart';
 import '../protocol/common_param_provider.dart';
 import '../protocol/signature_helper.dart';
+import '../../push/app_push.dart';
+import '../../push/route_names.dart';
+import '../../../features/auth/auth_controller.dart';
+import '../../../features/auth/login_page.dart';
+import '../../../features/main_tab/main_tab_controller.dart';
 import 'business_exception.dart';
 import 'network_client.dart';
 import 'network_response.dart';
@@ -23,6 +31,7 @@ class NetworkManager {
     this.asyncCommonParamProvider,
     this.syncCommonParamProvider,
     this.staticCommonParamProvider = const StaticCommonParamProvider({}),
+    this.onAuthExpired,
   }) : _client = client,
        _responseParser = responseParser,
        _bootstrapper = NetworkBootstrapper(client.rawDio),
@@ -36,6 +45,7 @@ class NetworkManager {
   final AsyncCommonParamProvider? asyncCommonParamProvider;
   final SyncCommonParamProvider? syncCommonParamProvider;
   final StaticCommonParamProvider staticCommonParamProvider;
+  final Future<void> Function()? onAuthExpired;
   final NetworkBootstrapper _bootstrapper;
   final EncryptionHelper _encryptionHelper;
 
@@ -212,9 +222,9 @@ class NetworkManager {
   Future<NetworkResponse<dynamic>> _handleResponse(dynamic raw) async {
     final response = _responseParser.parse(raw);
 
-    if (response.code == NetworkConfig.authExpiredCode) {
+    if (response.code == -2) {
       await _handleAuthExpired();
-      throw BusinessException(response.message, code: response.code);
+      return response;
     }
 
     if (!response.isSuccess) {
@@ -230,8 +240,32 @@ class NetworkManager {
     }
     _handlingAuthExpired = true;
     try {
-      // Placeholder for clearing local auth state and redirecting to login.
-      // This must stay centralized and idempotent.
+      final handler = onAuthExpired;
+      if (handler != null) {
+        await handler();
+        return;
+      }
+
+      final navigator = SapatCashApp.navigatorKey.currentState;
+      final navigatorContext = navigator?.context;
+      if (navigator == null || navigatorContext == null) {
+        return;
+      }
+
+      final authController = navigatorContext.read<AuthController>();
+      final mainTabController = navigatorContext.read<MainTabController>();
+      await authController.logout();
+      mainTabController.switchToHome(refresh: true);
+      if (AppPush.currentRouteName() == RouteNames.login) {
+        return;
+      }
+      navigator.pushAndRemoveUntil<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => const LoginPage(),
+          settings: const RouteSettings(name: RouteNames.login),
+        ),
+        (route) => (route.settings.name?.trim() ?? '') == RouteNames.mainTab,
+      );
     } finally {
       _handlingAuthExpired = false;
     }

@@ -220,9 +220,6 @@ class HomeProductListItem {
     this.amountValueText,
     this.productType,
     this.productCategory,
-    this.isMainProduct,
-    this.isApiProduct,
-    this.isCreditProduct,
   });
 
   factory HomeProductListItem.fromJson(dynamic raw) {
@@ -253,9 +250,6 @@ class HomeProductListItem {
       amountValueText: json['derangers'].stringOrNull,
       productType: json['suabilities'].intOrNull,
       productCategory: json['kegelers'].intOrNull,
-      isMainProduct: json['main_product'].intOrNull == 1,
-      isApiProduct: json['api_product'].intOrNull == 1,
-      isCreditProduct: json['credit_product'].intOrNull == 1,
     );
   }
   final String? productId;
@@ -283,9 +277,6 @@ class HomeProductListItem {
   final String? amountValueText;
   final int? productType;
   final int? productCategory;
-  final bool? isMainProduct;
-  final bool? isApiProduct;
-  final bool? isCreditProduct;
 
   bool get isButtonDisabled => applyStatus == -1;
 

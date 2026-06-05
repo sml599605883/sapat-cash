@@ -86,13 +86,11 @@ class RecreditTaskCoordinator {
 
     final currentRouteName = AppPush.currentRouteName();
     if (currentRouteName == RouteNames.waitingCredit) {
-      navigator.pop();
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-      final latestContext = SapatCashApp.navigatorKey.currentContext;
-      if (latestContext == null) {
-        return;
-      }
-      await AppPush.clickApply(latestContext, productId: currentProductId);
+      await AppPush.clickApply(
+        context,
+        productId: currentProductId,
+        removeRouteNamesOnSuccess: const <String>[RouteNames.waitingCredit],
+      );
       return;
     }
 

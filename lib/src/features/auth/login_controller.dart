@@ -28,6 +28,10 @@ class LoginController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool canSubmitLogin() {
+    return _agreed;
+  }
+
   bool isCodeValid(String code) {
     final normalized = code.replaceAll(RegExp(r'[^0-9]'), '');
     return normalized.length >= 4;

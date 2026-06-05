@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../core/push/app_push.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/main_tab/main_tab_controller.dart';
 import '../core/network/network_status_controller.dart';
@@ -16,7 +17,10 @@ class AppScope extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthController()..initialize()),
-        ChangeNotifierProvider(create: (_) => MainTabController()),
+        ChangeNotifierProvider(
+          create: (_) =>
+              MainTabController(topRouteNameProvider: AppPush.currentRouteName),
+        ),
         ChangeNotifierProvider(
           create: (_) => NetworkStatusController()..initialize(),
         ),

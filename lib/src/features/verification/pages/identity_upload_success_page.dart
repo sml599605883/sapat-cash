@@ -12,6 +12,45 @@ import '../../../core/widgets/dismiss_keyboard.dart';
 import '../../product/product_detail_cache.dart';
 import '../widgets/verification_hint_row.dart';
 
+DateTime defaultIdentityBirthDate() => DateTime(2000, 1, 1);
+
+DateTime parseIdentityBirthDate(String raw, {DateTime? now}) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty || trimmed == '--') {
+    return defaultIdentityBirthDate();
+  }
+  final normalized = trimmed.replaceAll('/', '-');
+  final parsed = DateTime.tryParse(normalized);
+  final resolved = parsed ?? _tryParseIdentityBirthDateParts(normalized);
+  if (resolved == null) {
+    return defaultIdentityBirthDate();
+  }
+  final current = now ?? DateTime.now();
+  if (resolved.isAfter(
+    DateTime(current.year, current.month, current.day, 23, 59, 59, 999, 999),
+  )) {
+    return defaultIdentityBirthDate();
+  }
+  return resolved;
+}
+
+DateTime? _tryParseIdentityBirthDateParts(String normalized) {
+  final parts = normalized
+      .split('-')
+      .where((item) => item.isNotEmpty)
+      .toList();
+  if (parts.length != 3) {
+    return null;
+  }
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final day = int.tryParse(parts[2]);
+  if (year == null || month == null || day == null) {
+    return null;
+  }
+  return DateTime(year, month, day);
+}
+
 class IdentityUploadSuccessPage extends StatefulWidget {
   const IdentityUploadSuccessPage({
     super.key,
@@ -183,28 +222,7 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
   }
 
   DateTime _parseBirthDate(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty || trimmed == '--') {
-      return DateTime(2000, 1, 1);
-    }
-    final normalized = trimmed.replaceAll('/', '-');
-    final parsed = DateTime.tryParse(normalized);
-    if (parsed != null) {
-      return parsed;
-    }
-    final parts = normalized
-        .split('-')
-        .where((item) => item.isNotEmpty)
-        .toList();
-    if (parts.length == 3) {
-      final year = int.tryParse(parts[0]);
-      final month = int.tryParse(parts[1]);
-      final day = int.tryParse(parts[2]);
-      if (year != null && month != null && day != null) {
-        return DateTime(year, month, day);
-      }
-    }
-    return DateTime(2000, 1, 1);
+    return parseIdentityBirthDate(raw);
   }
 
   String _formatDate(DateTime value) {

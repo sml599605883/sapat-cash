@@ -773,7 +773,7 @@ class _BindCardPageState extends State<BindCardPage> {
                                 ),
                                 child: _WarningHintRow(
                                   message:
-                                      'To avoid delays, make sure your bank or e-wallet account can receive funds without restrictions.',
+                                      'Fill in your account info carefully to ensure loan success.',
                                 ),
                               ),
                             SizedBox(height: screen.dp(16)),
@@ -1040,7 +1040,7 @@ class _WarningHintRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final screen = context.screen;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Image.asset(
           'assets/image/verification/bind_warning_icon.png',
@@ -1053,7 +1053,6 @@ class _WarningHintRow extends StatelessWidget {
             style: TextStyle(
               color: const Color(0xFF813203),
               fontSize: screen.dp(12),
-              height: 16 / 12,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1238,12 +1237,10 @@ class _SelectFieldOptionTile extends StatelessWidget {
                   if (status == '0') ...[
                     SizedBox(height: screen.dp(4)),
                     Text(
-                      label,
+                      text,
                       style: TextStyle(
-                        color: selected
-                            ? const Color(0xFF281001)
-                            : const Color(0xFF908E8C),
-                        fontSize: screen.dp(16),
+                        color: const Color(0xFF813203),
+                        fontSize: screen.dp(10),
                         fontWeight: FontWeight.bold,
                       ),
                     ),

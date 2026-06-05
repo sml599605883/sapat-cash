@@ -18,6 +18,19 @@ import '../../product/product_detail_cache.dart';
 import 'identity_upload_success_page.dart';
 import '../widgets/verification_hint_row.dart';
 
+Future<XFile?> pickImageWithLoading({
+  required Future<XFile?> Function() pickImage,
+  VoidCallback showLoading = EasyLoading.show,
+  VoidCallback dismissLoading = EasyLoading.dismiss,
+}) async {
+  showLoading();
+  try {
+    return await pickImage();
+  } finally {
+    dismissLoading();
+  }
+}
+
 class IdUploadDemoPage extends StatefulWidget {
   const IdUploadDemoPage({
     super.key,
@@ -108,11 +121,14 @@ class _IdUploadDemoPageState extends State<IdUploadDemoPage> {
         return;
       }
     }
-    EasyLoading.show();
-    final pickedFile = await _imagePicker.pickImage(
-      source: source,
-      imageQuality: 85,
-      requestFullMetadata: false,
+    final pickedFile = await pickImageWithLoading(
+      pickImage: () {
+        return _imagePicker.pickImage(
+          source: source,
+          imageQuality: 85,
+          requestFullMetadata: false,
+        );
+      },
     );
     if (!mounted || pickedFile == null) {
       return;
