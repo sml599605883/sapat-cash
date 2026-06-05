@@ -13,6 +13,13 @@ import 'webview_bridge_constants.dart';
 import 'webview_bridge_dispatcher.dart';
 import 'webview_bridge_models.dart';
 
+bool shouldReloadCurrentWebView({
+  required Uri targetUri,
+  Uri? currentUri,
+}) {
+  return currentUri?.toString().trim() == targetUri.toString().trim();
+}
+
 class WebViewPage extends StatefulWidget {
   const WebViewPage({super.key, required this.initialUrl, this.initialTitle});
 
@@ -136,6 +143,14 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
     }
     final targetUri = await _resolveWebUri(normalizedUrl);
     if (targetUri == null) {
+      return;
+    }
+    final currentUri = await _safeWebViewCall(() => controller.getUrl());
+    if (shouldReloadCurrentWebView(
+      targetUri: targetUri,
+      currentUri: currentUri,
+    )) {
+      await _safeWebViewCall(() => controller.reload());
       return;
     }
     await _safeWebViewCall(

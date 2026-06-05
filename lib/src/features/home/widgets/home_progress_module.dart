@@ -1,11 +1,30 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/layout/screen.dart';
+import '../../../core/network/api/api_client.dart';
+import '../../../core/network/core/error_message_adapter.dart';
 import '../../../core/push/app_push.dart';
+import '../../verification/pages/bank_account_list_page.dart';
+import '../../verification/pages/bind_card_page.dart';
 import '../home_models.dart';
+
+enum HomeProgressActionKind { detail, retry, changeAccount }
+
+HomeProgressActionKind resolveHomeProgressActionKind(HomeActionButton button) {
+  switch (button.type) {
+    case HomeActionType.retry:
+      return HomeProgressActionKind.retry;
+    case HomeActionType.change:
+      return HomeProgressActionKind.changeAccount;
+    case HomeActionType.repay:
+    case HomeActionType.unknown:
+      return HomeProgressActionKind.detail;
+  }
+}
 
 class HomeProgressModule extends StatefulWidget {
   const HomeProgressModule({super.key, this.items = const []});
@@ -173,7 +192,10 @@ class _ProgressCard extends StatelessWidget {
                     _BottomActions(
                       buttons: buttons,
                       style: style,
-                      onTap: () => _openDetail(context),
+                      onTap: (button) => _handleBottomAction(
+                        context,
+                        button,
+                      ),
                     ),
                 ],
               ),
@@ -190,38 +212,154 @@ class _ProgressCard extends StatelessWidget {
     );
   }
 
-  List<String> _resolveButtons() {
-    final labels = item.buttons
+  List<HomeActionButton> _resolveButtons() {
+    final actions = item.buttons
         .where((button) => button.enabled && button.text.trim().isNotEmpty)
-        .map((button) => button.text.trim())
         .toList();
-    if (labels.isNotEmpty) {
-      return labels.take(2).toList();
+    if (actions.isNotEmpty) {
+      return actions.take(2).toList();
     }
     switch (_ProgressCardStyle.resolve(item).kind) {
       case _ProgressCardKind.failedSingle:
-        return const ['Change'];
+        return const [
+          HomeActionButton(
+            type: HomeActionType.change,
+            rawType: 'change',
+            enabled: true,
+            text: 'Change',
+          ),
+        ];
       case _ProgressCardKind.failedDual:
-        return const ['Try Again', 'Change'];
+        return const [
+          HomeActionButton(
+            type: HomeActionType.retry,
+            rawType: 'retry',
+            enabled: true,
+            text: 'Try Again',
+          ),
+          HomeActionButton(
+            type: HomeActionType.change,
+            rawType: 'change',
+            enabled: true,
+            text: 'Change',
+          ),
+        ];
       case _ProgressCardKind.releasingFunds:
       case _ProgressCardKind.inReview:
-        return const [];
+        return const <HomeActionButton>[];
       case _ProgressCardKind.pendingPayment:
       case _ProgressCardKind.pastDue:
-        return const ['Change'];
+        return const [
+          HomeActionButton(
+            type: HomeActionType.change,
+            rawType: 'change',
+            enabled: true,
+            text: 'Change',
+          ),
+        ];
     }
   }
 
   Future<void> _openDetail(BuildContext context) async {
+    await _openDetailWithNavigator(Navigator.of(context));
+  }
+
+  Future<void> _openDetailWithNavigator(NavigatorState navigator) async {
     final url = item.orderDetailLink.trim();
     if (url.isNotEmpty) {
-      await AppPush.openWebPage(context, rawUrl: url);
+      await AppPush.openWebUriWithNavigator(navigator, rawUrl: url);
       return;
     }
     final productId = item.productId.trim();
-    if (productId.isNotEmpty) {
-      await AppPush.productDetail(context, productId: productId);
+    if (productId.isEmpty || !navigator.mounted) {
+      return;
     }
+    await AppPush.productDetail(navigator.context, productId: productId);
+  }
+
+  Future<void> _handleBottomAction(
+    BuildContext context,
+    HomeActionButton button,
+  ) async {
+    switch (resolveHomeProgressActionKind(button)) {
+      case HomeProgressActionKind.retry:
+        await _handleRetryOrder(context);
+      case HomeProgressActionKind.changeAccount:
+        await _handleChangeAccount(context);
+      case HomeProgressActionKind.detail:
+        await _openDetail(context);
+    }
+  }
+
+  Future<void> _handleRetryOrder(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final orderNo = item.loanOrderNo.trim();
+    if (orderNo.isEmpty) {
+      await _openDetailWithNavigator(navigator);
+      return;
+    }
+    try {
+      final response = await apiService.confirmRetryOrder(orderNo: orderNo);
+      final claviform = response.json['claviform'].stringValue.trim();
+      if (claviform.isEmpty) {
+        await _openDetailWithNavigator(navigator);
+        return;
+      }
+      await AppPush.openWebUriWithNavigator(navigator, rawUrl: claviform);
+    } catch (error) {
+      if (!navigator.mounted) {
+        return;
+      }
+      await _showActionError(error);
+    }
+  }
+
+  Future<void> _handleChangeAccount(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final productId = item.productId.trim();
+    final orderNo = item.loanOrderNo.trim();
+    if (productId.isEmpty || orderNo.isEmpty) {
+      await _openDetailWithNavigator(navigator);
+      return;
+    }
+    try {
+      final response = await apiService.fetchAccountList(productId: productId);
+      final accountList = response.json['noniron'].listValue;
+      final claviform = await AppPush.pushWithNavigator<String>(
+        navigator,
+        page: accountList.isNotEmpty
+            ? BankAccountListPage(productId: productId, orderNo: orderNo)
+            : BindCardPage(
+                productId: productId,
+                orderNo: orderNo,
+                isChangeBankCard: true,
+              ),
+        routeName: accountList.isNotEmpty
+            ? BankAccountListPage.routeName
+            : BindCardPage.routeName,
+      );
+      if (!navigator.mounted) {
+        return;
+      }
+      final normalizedUrl = claviform?.trim() ?? '';
+      if (normalizedUrl.isEmpty) {
+        return;
+      }
+      await AppPush.openWebUriWithNavigator(navigator, rawUrl: normalizedUrl);
+    } catch (error) {
+      if (!navigator.mounted) {
+        return;
+      }
+      await _showActionError(error);
+    }
+  }
+
+  Future<void> _showActionError(Object error) async {
+    final message = ErrorMessageAdapter.resolve(error);
+    if (message.trim().isEmpty) {
+      return;
+    }
+    EasyLoading.showToast(message);
   }
 }
 
@@ -458,9 +596,9 @@ class _BottomActions extends StatelessWidget {
     required this.onTap,
   });
 
-  final List<String> buttons;
+  final List<HomeActionButton> buttons;
   final _ProgressCardStyle style;
-  final VoidCallback onTap;
+  final ValueChanged<HomeActionButton> onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -470,35 +608,35 @@ class _BottomActions extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: screen.dp(80)),
         child: Center(
           child: _ActionButton(
-            text: buttons.first,
+            text: buttons.first.text,
             backgroundColor: style.primaryButtonColor,
             textColor: Colors.white,
-            onTap: onTap,
+            onTap: () => onTap(buttons.first),
           ),
         ),
       );
     }
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: screen.dp(80)),
+      padding: EdgeInsets.symmetric(horizontal: screen.dp(20)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Expanded(
             child: _ActionButton(
-              text: buttons.first,
+              text: buttons.first.text,
               backgroundColor: style.secondaryButtonColor,
               textColor: Colors.white,
-              onTap: onTap,
+              onTap: () => onTap(buttons.first),
             ),
           ),
           SizedBox(width: screen.dp(24)),
           Expanded(
             child: _ActionButton(
-              text: buttons.last,
+              text: buttons.last.text,
               backgroundColor: style.primaryButtonColor,
               textColor: Colors.white,
-              onTap: onTap,
+              onTap: () => onTap(buttons.last),
             ),
           ),
         ],
@@ -533,13 +671,16 @@ class _ActionButton extends StatelessWidget {
           color: backgroundColor,
           borderRadius: BorderRadius.circular(screen.dp(15)),
         ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: textColor,
-            fontSize: screen.dp(14),
-            height: 22 / 14,
-            fontWeight: FontWeight.w400,
+        padding: EdgeInsets.symmetric(horizontal: screen.dp(5)),
+        child: Center(
+          child: Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textColor,
+              fontSize: screen.dp(14),
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),
