@@ -49,7 +49,7 @@ class _ContactInformationPageState extends State<ContactInformationPage> {
       context,
       productId: widget.productId,
       popupType: _retainPopupType,
-      onGoBack: () => AppPush.popToHomeTabbar(context),
+      onGoBack: () => AppPush.pop(context),
     );
   }
 

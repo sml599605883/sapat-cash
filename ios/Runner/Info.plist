@@ -26,21 +26,21 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Used to measure attribution and improve product performance.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Used to report location information for risk control and service delivery.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Used to report location information for risk control and service delivery.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Used to capture your ID photo for identity verification.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Used to select your ID photo for identity verification.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Enable Camera. To complete your application, we need to take a clear photo of your ID.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need your location to support identity verification and help keep your account secure against suspicious activity.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to support identity verification and help keep your account secure against suspicious activity.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to select your ID photo for identity verification.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Enable this permission to receive relevant service updates and strengthen your account’s security profile.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

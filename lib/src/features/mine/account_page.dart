@@ -45,11 +45,11 @@ class _AccountPageState extends State<AccountPage> {
   Future<void> _handleLogout() async {
     final authController = context.read<AuthController>();
     final confirmed = await _showActionDialog(
-      title: 'Leaving already?',
+      title: 'Don\'t Miss Out!',
       message:
-          'You can come back anytime, but you might miss important updates',
-      leftActionText: 'Exit',
-      rightActionText: 'Stay',
+          'For a faster borrowing experience next time, we recommend staying logged in.',
+      leftActionText: 'Log Out',
+      rightActionText: 'Keep Active',
       leftActionColor: const Color(0xFF908E8C),
       rightActionColor: const Color(0xFFF45834),
       rightActionWeight: FontWeight.w500,
@@ -77,11 +77,11 @@ class _AccountPageState extends State<AccountPage> {
   Future<void> _handleDeleteAccount() async {
     final authController = context.read<AuthController>();
     final confirmed = await _showActionDialog(
-      title: 'Before you continue',
+      title: 'Before You Leave',
       message:
-          'Deleting your account will remove all your data and loan records. This action cannot be undone',
-      leftActionText: 'Delete Account',
-      rightActionText: 'Cancel',
+          'Your available offers and application history will no longer be accessible.',
+      leftActionText: 'Delete Anyway',
+      rightActionText: 'Keep Anyway',
       leftActionColor: const Color(0xFF908E8C),
       rightActionColor: const Color(0xFFF45834),
       rightActionWeight: FontWeight.w500,

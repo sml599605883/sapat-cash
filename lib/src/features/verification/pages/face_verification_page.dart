@@ -113,16 +113,18 @@ class _FaceVerificationPageState extends State<FaceVerificationPage>
           barrierDismissible: false,
           builder: (dialogContext) {
             return AlertDialog(
-              title: const Text('需要相机权限'),
-              content: const Text('请前往设置开启相机权限后继续。'),
+              title: const Text('Camera Disabled'),
+              content: const Text(
+                'Without camera permission, you cannot upload ID photos. Please enable camera access in settings to continue.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('取消'),
+                  child: const Text('Cancel'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('去设置'),
+                  child: const Text('Enable'),
                 ),
               ],
             );
@@ -213,11 +215,14 @@ class _FaceVerificationPageState extends State<FaceVerificationPage>
             final livenessId =
                 successResultMap['liveness_id']?.toString().trim() ?? '';
             final image = successResultMap['image']?.toString().trim() ?? '';
-            await _uploadFaceResult(
+            final uploadStatus = await _uploadFaceResult(
               livenessId: livenessId,
               license: license,
               image: image,
             );
+            if (!uploadStatus) {
+              return;
+            }
             ReportManager.instance.reportRiskBehavior(
               productId: productId,
               sceneType: '4',
@@ -255,21 +260,27 @@ class _FaceVerificationPageState extends State<FaceVerificationPage>
     );
   }
 
-  Future<void> _uploadFaceResult({
+  Future<bool> _uploadFaceResult({
     required String livenessId,
     required String license,
     required String image,
   }) async {
     final imageFilePath = await _writeBase64ImageToTempFile(image);
-    await apiService.uploadIdentityAsset(
-      type: '10',
-      imageSource: '1',
-      cardType: '',
-      bizTokenOrLivenessId: livenessId,
-      authCode: license,
-      faceType: '7',
-      filePath: imageFilePath,
-    );
+    try {
+      await apiService.uploadIdentityAsset(
+        type: '10',
+        imageSource: '1',
+        cardType: '',
+        bizTokenOrLivenessId: livenessId,
+        authCode: license,
+        faceType: '7',
+        filePath: imageFilePath,
+      );
+      return true;
+    } catch (e) {
+      EasyLoading.showError(ErrorMessageAdapter.resolve(e));
+    }
+    return false;
   }
 
   Future<String> _writeBase64ImageToTempFile(String image) async {
@@ -308,16 +319,18 @@ class _FaceVerificationPageState extends State<FaceVerificationPage>
           barrierDismissible: false,
           builder: (dialogContext) {
             return AlertDialog(
-              title: const Text('提示'),
-              content: const Text('需要重新上传身份证照片，请重新上传后再继续。'),
+              title: const Text('ID Photo Re-upload'),
+              content: const Text(
+                'The image quality was too low. Please retake a clear, well-lit photo of your ID.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('取消'),
+                  child: const Text('Close'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('去上传'),
+                  child: const Text('Retry'),
                 ),
               ],
             );

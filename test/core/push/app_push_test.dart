@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sapat_cash/src/core/push/app_push.dart';
 import 'package:sapat_cash/src/core/push/route_names.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   group('AppPush apply success route cleanup', () {
@@ -27,6 +28,22 @@ void main() {
     test('clears all verification flow history when reopening identity step', () {
       final routeNames = AppPush.verificationFlowHistoryForTest(
         RouteNames.identityVerification,
+      );
+
+      expect(
+        routeNames,
+        containsAll(<String>[
+          RouteNames.identityVerification,
+          RouteNames.bindCard,
+          RouteNames.waitingCredit,
+          RouteNames.webView,
+        ]),
+      );
+    });
+
+    test('clears all verification flow history when opening webview', () {
+      final routeNames = AppPush.pushWebViewCleanupRouteNamesForTest(
+        const <String>[],
       );
 
       expect(
@@ -70,6 +87,58 @@ void main() {
       expect(
         routeNames.where((name) => name == RouteNames.bankAccountList).length,
         1,
+      );
+    });
+  });
+
+  group('AppPush location permission flow', () {
+    test('requests permission when service is enabled but status is denied', () {
+      expect(
+        AppPush.locationPermissionActionForTest(
+          serviceStatus: ServiceStatus.enabled,
+          permissionStatus: PermissionStatus.denied,
+        ),
+        AppPushLocationPermissionAction.requestPermission,
+      );
+    });
+
+    test('opens service prompt when location service is disabled', () {
+      expect(
+        AppPush.locationPermissionActionForTest(
+          serviceStatus: ServiceStatus.disabled,
+          permissionStatus: PermissionStatus.denied,
+        ),
+        AppPushLocationPermissionAction.openServicePrompt,
+      );
+    });
+
+    test(
+      'opens settings prompt when permission is permanently denied or restricted',
+      () {
+        expect(
+          AppPush.locationPermissionActionForTest(
+            serviceStatus: ServiceStatus.enabled,
+            permissionStatus: PermissionStatus.permanentlyDenied,
+          ),
+          AppPushLocationPermissionAction.openSettingsPrompt,
+        );
+        expect(
+          AppPush.locationPermissionActionForTest(
+            serviceStatus: ServiceStatus.enabled,
+            permissionStatus: PermissionStatus.restricted,
+          ),
+          AppPushLocationPermissionAction.openSettingsPrompt,
+        );
+      },
+    );
+
+    test('continues immediately when permission is already granted', () {
+      expect(
+        AppPush.locationPermissionActionForTest(
+          serviceStatus: ServiceStatus.enabled,
+          permissionStatus: PermissionStatus.granted,
+        ),
+        AppPushLocationPermissionAction.proceed,
       );
     });
   });

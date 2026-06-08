@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/app.dart';
@@ -23,6 +24,24 @@ import 'network_response.dart';
 import 'response_parser.dart';
 
 enum RequestMethod { get, post, upload }
+
+Future<void> showAuthExpiredMessageThenNavigate({
+  required String message,
+  required Future<void> Function() onNavigate,
+  void Function()? dismissLoading,
+  void Function(String message)? showMessage,
+  Duration? toastDuration,
+}) async {
+  dismissLoading?.call();
+  final normalizedMessage = message.trim();
+  if (normalizedMessage.isNotEmpty) {
+    (showMessage ?? EasyLoading.showToast)(normalizedMessage);
+    await Future<void>.delayed(
+      toastDuration ?? EasyLoading.instance.displayDuration,
+    );
+  }
+  await onNavigate();
+}
 
 class NetworkManager {
   NetworkManager({
@@ -223,7 +242,7 @@ class NetworkManager {
     final response = _responseParser.parse(raw);
 
     if (response.code == -2) {
-      await _handleAuthExpired();
+      await _handleAuthExpired(response.message);
       return response;
     }
 
@@ -234,7 +253,7 @@ class NetworkManager {
     return response;
   }
 
-  Future<void> _handleAuthExpired() async {
+  Future<void> _handleAuthExpired(String message) async {
     if (_handlingAuthExpired) {
       return;
     }
@@ -254,17 +273,24 @@ class NetworkManager {
 
       final authController = navigatorContext.read<AuthController>();
       final mainTabController = navigatorContext.read<MainTabController>();
-      await authController.logout();
-      mainTabController.switchToHome(refresh: true);
-      if (AppPush.currentRouteName() == RouteNames.login) {
-        return;
-      }
-      navigator.pushAndRemoveUntil<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => const LoginPage(),
-          settings: const RouteSettings(name: RouteNames.login),
-        ),
-        (route) => (route.settings.name?.trim() ?? '') == RouteNames.mainTab,
+      await showAuthExpiredMessageThenNavigate(
+        message: message,
+        dismissLoading: EasyLoading.dismiss,
+        onNavigate: () async {
+          await authController.logout();
+          mainTabController.switchToHome(refresh: true);
+          if (AppPush.currentRouteName() == RouteNames.login) {
+            return;
+          }
+          navigator.pushAndRemoveUntil<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => const LoginPage(),
+              settings: const RouteSettings(name: RouteNames.login),
+            ),
+            (route) =>
+                (route.settings.name?.trim() ?? '') == RouteNames.mainTab,
+          );
+        },
       );
     } finally {
       _handlingAuthExpired = false;

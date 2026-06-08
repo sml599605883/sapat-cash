@@ -10,6 +10,29 @@ import 'package:sapat_cash/src/core/network/core/response_parser.dart';
 
 void main() {
   group('NetworkManager auth expired handling', () {
+    test(
+      'shows auth expired message after dismissing loading before navigation',
+      () async {
+        final events = <String>[];
+
+        await showAuthExpiredMessageThenNavigate(
+          message: 'auth expired',
+          toastDuration: Duration.zero,
+          dismissLoading: () {
+            events.add('dismiss');
+          },
+          showMessage: (message) {
+            events.add('message:$message');
+          },
+          onNavigate: () async {
+            events.add('navigate');
+          },
+        );
+
+        expect(events, <String>['dismiss', 'message:auth expired', 'navigate']);
+      },
+    );
+
     test('treats legacy -2 code as auth expired without rethrowing', () async {
       var authExpiredCallCount = 0;
       final manager = NetworkManager(
@@ -23,12 +46,15 @@ void main() {
       await expectLater(
         manager.get('/test'),
         completion(
-          isA<NetworkResponse<dynamic>>().having((response) => response.code, 'code', -2),
+          isA<NetworkResponse<dynamic>>().having(
+            (response) => response.code,
+            'code',
+            -2,
+          ),
         ),
       );
       expect(authExpiredCallCount, 1);
     });
-
   });
 }
 

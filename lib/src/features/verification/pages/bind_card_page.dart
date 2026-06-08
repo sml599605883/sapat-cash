@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sapat_cash/src/core/network/core/business_exception.dart';
 import 'package:sapat_cash/src/features/verification/pages/identity_verification_page.dart';
 import 'package:trustdevice_pro_plugin/trustdevice_pro_plugin.dart';
@@ -37,7 +39,8 @@ class BindCardPage extends StatefulWidget {
   State<BindCardPage> createState() => _BindCardPageState();
 }
 
-class _BindCardPageState extends State<BindCardPage> {
+class _BindCardPageState extends State<BindCardPage>
+    with WidgetsBindingObserver {
   BindCardModel? _model;
   final ScrollController _scrollController = ScrollController();
   final Map<int, TextEditingController> _fieldControllers =
@@ -53,6 +56,7 @@ class _BindCardPageState extends State<BindCardPage> {
   int _selectedSectionIndex = 0;
   final TrustdeviceProPlugin _trustdeviceProPlugin = TrustdeviceProPlugin();
   late int _scene8StartTimeSeconds;
+  Completer<void>? _resumeCompleter;
 
   @override
   void initState() {
@@ -62,12 +66,21 @@ class _BindCardPageState extends State<BindCardPage> {
       debugLabel: 'bind_card_inactive_focus',
       skipTraversal: true,
     );
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadData();
       }
     });
     _initTrustDevice();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _resumeCompleter?.complete();
+      _resumeCompleter = null;
+    }
   }
 
   Future<void> _initTrustDevice() async {
@@ -442,6 +455,10 @@ class _BindCardPageState extends State<BindCardPage> {
         return;
       }
       if (response.code == 20000) {
+        final allowed = await _ensureCameraPermission();
+        if (!allowed) {
+          return;
+        }
         _startFaceVerification();
         return;
       }
@@ -498,6 +515,85 @@ class _BindCardPageState extends State<BindCardPage> {
         const <String>[],
       ),
     );
+  }
+
+  Future<bool> _ensureCameraPermission() async {
+    final previousStatus = await Permission.camera.status;
+    if (previousStatus.isGranted) {
+      return true;
+    }
+
+    final status = await Permission.camera.request();
+    if (status.isGranted) {
+      await _waitForAppResumedAndFirstFrame();
+      return true;
+    }
+
+    if (!mounted) {
+      return false;
+    }
+
+    final goToSettings =
+        await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Camera Disabled'),
+              content: const Text(
+                'Without camera permission, you cannot upload ID photos. Please enable camera access in settings to continue.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Enable'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+    if (goToSettings) {
+      await openAppSettings();
+    }
+    return false;
+  }
+
+  Future<void> _waitForAppResumedAndFirstFrame() async {
+    final binding = WidgetsBinding.instance;
+    if (binding.lifecycleState != AppLifecycleState.resumed) {
+      final completer = Completer<void>();
+      _resumeCompleter = completer;
+      if (binding.lifecycleState == AppLifecycleState.resumed &&
+          !completer.isCompleted) {
+        completer.complete();
+        _resumeCompleter = null;
+      }
+      await completer.future.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          if (_resumeCompleter == completer) {
+            _resumeCompleter = null;
+          }
+        },
+      );
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final frameCompleter = Completer<void>();
+    binding.addPostFrameCallback((_) {
+      if (!frameCompleter.isCompleted) {
+        frameCompleter.complete();
+      }
+    });
+    await frameCompleter.future;
   }
 
   Future<void> _startFaceVerification() async {
@@ -584,16 +680,18 @@ class _BindCardPageState extends State<BindCardPage> {
           barrierDismissible: false,
           builder: (dialogContext) {
             return AlertDialog(
-              title: const Text('提示'),
-              content: const Text('需要重新上传身份证照片，请重新上传后再继续。'),
+              title: const Text('ID Photo Re-upload'),
+              content: const Text(
+                'The image quality was too low. Please retake a clear, well-lit photo of your ID.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('取消'),
+                  child: const Text('Close'),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: const Text('去上传'),
+                  child: const Text('Retry'),
                 ),
               ],
             );
@@ -626,11 +724,7 @@ class _BindCardPageState extends State<BindCardPage> {
   }
 
   void _handleBackPressed() {
-    if (widget.isChangeBankCard) {
-      AppPush.pop(context);
-      return;
-    }
-    AppPush.popToHomeTabbar(context);
+    AppPush.pop(context);
   }
 
   @override
@@ -644,6 +738,7 @@ class _BindCardPageState extends State<BindCardPage> {
       focusNode.dispose();
     }
     _inactiveFocusNode.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -732,9 +827,7 @@ class _BindCardPageState extends State<BindCardPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Header(
-                            onBack: _handleBackPressed,
-                          ),
+                          _Header(onBack: _handleBackPressed),
                           SizedBox(height: screen.dp(16)),
                           VerificationHintRow(message: hintMessage),
                           SizedBox(height: screen.dp(22)),
@@ -1119,7 +1212,7 @@ class _BorderlandsBubble extends StatelessWidget {
         text,
         style: TextStyle(
           color: Colors.white,
-          fontSize: screen.dp(10),
+          fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
       ),

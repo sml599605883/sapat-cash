@@ -133,6 +133,7 @@ class _IdUploadDemoPageState extends State<IdUploadDemoPage> {
     if (!mounted || pickedFile == null) {
       return;
     }
+    EasyLoading.show();
     final compressedFile = await _compressToLimit(File(pickedFile.path));
     if (!mounted || compressedFile == null) {
       return;

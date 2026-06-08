@@ -28,6 +28,16 @@ import '../../features/verification/pages/work_information_page.dart';
 import '../../features/web/webview_page.dart';
 import 'route_names.dart';
 
+enum AppPushLocationPermissionAction {
+  proceed,
+  openServicePrompt,
+  requestPermission,
+  openSettingsPrompt,
+}
+
+typedef AppPushRouteChangeListener =
+    void Function(String? previousRouteName, String? currentRouteName);
+
 final class AppPush {
   const AppPush._();
 
@@ -175,35 +185,16 @@ final class AppPush {
     );
   }
 
-  static Future<T?> pushAccountWithNavigator<T>(NavigatorState navigator) {
-    return pushWithNavigator<T>(
-      navigator,
-      page: const AccountPage(),
-      routeName: RouteNames.account,
-    );
-  }
-
   static Future<T?> pushWebView<T>(
     BuildContext context, {
     required String url,
     String? title,
   }) {
-    return pushWebViewWithNavigator<T>(
+    return pushAndRemoveRoutesWithNavigator<T>(
       Navigator.of(context),
-      url: url,
-      title: title,
-    );
-  }
-
-  static Future<T?> pushWebViewWithNavigator<T>(
-    NavigatorState navigator, {
-    required String url,
-    String? title,
-  }) {
-    return pushWithNavigator<T>(
-      navigator,
       page: WebViewPage(initialUrl: url, initialTitle: title),
       routeName: RouteNames.webView,
+      removeRouteNames: _pushWebViewCleanupRouteNames(),
     );
   }
 
@@ -287,11 +278,11 @@ final class AppPush {
       return;
     }
 
+    EasyLoading.show();
     ReportManager.instance.reportNativeLocation();
     final normalizedRemoveRouteNames = _normalizeRouteNames(
       removeRouteNamesOnSuccess,
     ).toList(growable: false);
-    EasyLoading.show();
     try {
       final response = await apiService.clickApply(
         productId: normalizedProductId,
@@ -459,6 +450,22 @@ final class AppPush {
       return null;
     }
     return names.last;
+  }
+
+  static void addRouteChangeListener(AppPushRouteChangeListener listener) {
+    final observer = navigatorObserver;
+    if (observer is! _AppPushRouteObserver) {
+      return;
+    }
+    observer.addListener(listener);
+  }
+
+  static void removeRouteChangeListener(AppPushRouteChangeListener listener) {
+    final observer = navigatorObserver;
+    if (observer is! _AppPushRouteObserver) {
+      return;
+    }
+    observer.removeListener(listener);
   }
 
   static PageRoute<T> _buildPushRoute<T>(Widget page, {String? routeName}) {
@@ -653,6 +660,14 @@ final class AppPush {
     }
 
     final serviceStatus = await Permission.locationWhenInUse.serviceStatus;
+    final permissionStatus = await Permission.locationWhenInUse.status;
+    final permissionAction = _resolveLocationPermissionAction(
+      serviceStatus: serviceStatus,
+      permissionStatus: permissionStatus,
+    );
+    if (permissionAction == AppPushLocationPermissionAction.proceed) {
+      return true;
+    }
     if (serviceStatus != ServiceStatus.enabled) {
       final context = SapatCashApp.navigatorKey.currentContext;
       if (context == null || !context.mounted) {
@@ -661,11 +676,11 @@ final class AppPush {
       EasyLoading.dismiss();
       final goToService = await _showPermissionPromptDialog(
         context,
-        title: 'Location service required',
+        title: 'GPS is Off',
         content:
-            'Device location service is turned off. Turn it on to improve risk control and service delivery.',
+            'It looks like your GPS is off. Please enable location services to complete the verification process.',
         cancelText: 'Cancel',
-        confirmText: 'Location Service',
+        confirmText: 'Settings',
       );
       if (goToService) {
         await openAppSettings();
@@ -674,16 +689,28 @@ final class AppPush {
       return true;
     }
 
+    if (permissionAction == AppPushLocationPermissionAction.requestPermission) {
+      final requestStatus = await Permission.locationWhenInUse.request();
+      if (requestStatus.isGranted) {
+        return true;
+      }
+      if (!requestStatus.isPermanentlyDenied && !requestStatus.isRestricted) {
+        return false;
+      }
+    }
+
     final context = SapatCashApp.navigatorKey.currentContext;
     if (context == null || !context.mounted) {
       return false;
     }
+    EasyLoading.dismiss();
     final goToSettings = await _showPermissionPromptDialog(
       context,
-      title: 'Location permission required',
-      content: 'Please allow location access in Settings to continue.',
+      title: 'Location Required',
+      content:
+          'Identity verification cannot be completed without your location. Please allow access in settings.',
       cancelText: 'Cancel',
-      confirmText: 'Settings',
+      confirmText: 'Enable',
     );
     if (goToSettings) {
       await openAppSettings();
@@ -712,6 +739,17 @@ final class AppPush {
           },
         ) ??
         false;
+  }
+
+  @visibleForTesting
+  static AppPushLocationPermissionAction locationPermissionActionForTest({
+    required ServiceStatus serviceStatus,
+    required PermissionStatus permissionStatus,
+  }) {
+    return _resolveLocationPermissionAction(
+      serviceStatus: serviceStatus,
+      permissionStatus: permissionStatus,
+    );
   }
 
   static Future<void> _pushVerificationFlowStep(
@@ -744,6 +782,16 @@ final class AppPush {
     return _verificationFlowHistoryBefore(routeName);
   }
 
+  @visibleForTesting
+  static List<String> pushWebViewCleanupRouteNamesForTest(
+    Iterable<String> extraRouteNames,
+  ) {
+    return _mergeRouteNames(
+      _pushWebViewCleanupRouteNames(),
+      extraRouteNames,
+    );
+  }
+
   static List<String> changeAccountCleanupRouteNames(
     Iterable<String> extraRouteNames,
   ) {
@@ -756,6 +804,10 @@ final class AppPush {
       return const <String>[];
     }
     return _verificationFlowRouteSequence.toList(growable: false);
+  }
+
+  static List<String> _pushWebViewCleanupRouteNames() {
+    return _verificationFlowHistoryBefore(RouteNames.webView);
   }
 
   static Set<String> _normalizeRouteNames(Iterable<String> routeNames) {
@@ -875,7 +927,7 @@ final class AppPush {
         mainTabController.switchToHome(refresh: true);
         return true;
       case 'TennisGametogenic':
-        await pushAccountWithNavigator(navigator);
+        await pushAccount(navigator.context);
         return true;
       case 'ConsumeRunny':
         await pushLoginWithNavigator(navigator);
@@ -1112,6 +1164,22 @@ final class AppPush {
     return merged.toList(growable: false);
   }
 
+  static AppPushLocationPermissionAction _resolveLocationPermissionAction({
+    required ServiceStatus serviceStatus,
+    required PermissionStatus permissionStatus,
+  }) {
+    if (serviceStatus != ServiceStatus.enabled) {
+      return AppPushLocationPermissionAction.openServicePrompt;
+    }
+    if (permissionStatus.isGranted || permissionStatus.isLimited) {
+      return AppPushLocationPermissionAction.proceed;
+    }
+    if (permissionStatus.isPermanentlyDenied || permissionStatus.isRestricted) {
+      return AppPushLocationPermissionAction.openSettingsPrompt;
+    }
+    return AppPushLocationPermissionAction.requestPermission;
+  }
+
   static List<String> _changeAccountCleanupRouteNames(
     Iterable<String> extraRouteNames,
   ) {
@@ -1125,29 +1193,63 @@ final class AppPush {
 
 final class _AppPushRouteObserver extends NavigatorObserver {
   final List<Route<dynamic>> _routes = <Route<dynamic>>[];
+  final Set<AppPushRouteChangeListener> _listeners =
+      <AppPushRouteChangeListener>{};
 
   List<Route<dynamic>> get routes => List.unmodifiable(_routes);
 
+  void addListener(AppPushRouteChangeListener listener) {
+    _listeners.add(listener);
+  }
+
+  void removeListener(AppPushRouteChangeListener listener) {
+    _listeners.remove(listener);
+  }
+
+  String? get _currentRouteName {
+    if (_routes.isEmpty) {
+      return null;
+    }
+    return _routes.last.settings.name?.trim();
+  }
+
+  void _notifyRouteChanged(String? previousRouteName) {
+    final currentRouteName = _currentRouteName;
+    if (previousRouteName == currentRouteName) {
+      return;
+    }
+    for (final listener in _listeners) {
+      listener(previousRouteName, currentRouteName);
+    }
+  }
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final previousRouteName = _currentRouteName;
     _routes.add(route);
+    _notifyRouteChanged(previousRouteName);
     super.didPush(route, previousRoute);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final previousRouteName = _currentRouteName;
     _routes.remove(route);
+    _notifyRouteChanged(previousRouteName);
     super.didPop(route, previousRoute);
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final previousRouteName = _currentRouteName;
     _routes.remove(route);
+    _notifyRouteChanged(previousRouteName);
     super.didRemove(route, previousRoute);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    final previousRouteName = _currentRouteName;
     final index = oldRoute == null ? -1 : _routes.indexOf(oldRoute);
     if (index >= 0) {
       if (newRoute == null) {
@@ -1158,6 +1260,7 @@ final class _AppPushRouteObserver extends NavigatorObserver {
     } else if (newRoute != null) {
       _routes.add(newRoute);
     }
+    _notifyRouteChanged(previousRouteName);
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
   }
 }

@@ -140,10 +140,16 @@ import UserNotifications
     let ipAddress = wifiIPv4Address()
     let networkType = currentNetworkType()
     let carrier = currentCarrierName()
-
+    var idfa: String {
+        let idfa = ASIdentifierManager.shared().advertisingIdentifier.uuidString
+        guard idfa == "00000000-0000-0000-0000-000000000000" else {
+            return idfa
+        }
+        return ""
+    }
     return [
       "idfv": device.identifierForVendor?.uuidString ?? "",
-      "idfa": ASIdentifierManager.shared().advertisingIdentifier.uuidString,
+      "idfa": idfa,
       "deviceId": device.identifierForVendor?.uuidString ?? "",
       "batteryLevel": max(Int(device.batteryLevel * 100), 0),
       "isCharging": device.batteryState == .charging || device.batteryState == .full ? 1 : 0,
@@ -545,7 +551,10 @@ import UserNotifications
         return
       }
 
-      let placemark = placemarks?.first
+      guard let placemark = placemarks?.first else {
+        return
+      }
+
       let payload = self.locationPayload(
         location: location,
         placemark: placemark,

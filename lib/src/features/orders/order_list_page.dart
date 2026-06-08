@@ -40,6 +40,18 @@ extension on OrderListType {
   }
 }
 
+bool shouldRefreshOrderListOnRouteResume({
+  required bool hasBeenTopRoute,
+  required String? previousTopRouteName,
+  required String? currentTopRouteName,
+}) {
+  if (!hasBeenTopRoute) {
+    return false;
+  }
+  return previousTopRouteName?.trim() != RouteNames.orderList &&
+      currentTopRouteName?.trim() == RouteNames.orderList;
+}
+
 class OrderListPage extends StatefulWidget {
   const OrderListPage({super.key, this.initialType = OrderListType.all});
 
@@ -61,14 +73,18 @@ class _OrderListPageState extends State<OrderListPage> {
   bool _loading = false;
   bool _loadingMore = false;
   bool _hasMore = true;
+  bool _hasBeenTopRoute = false;
   int _page = 1;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_handleScroll);
+    AppPush.addRouteChangeListener(_handleRouteChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        _hasBeenTopRoute =
+            AppPush.currentRouteName()?.trim() == RouteNames.orderList;
         _loadFirstPage();
       }
     });
@@ -76,10 +92,28 @@ class _OrderListPageState extends State<OrderListPage> {
 
   @override
   void dispose() {
+    AppPush.removeRouteChangeListener(_handleRouteChanged);
     _scrollController
       ..removeListener(_handleScroll)
       ..dispose();
     super.dispose();
+  }
+
+  void _handleRouteChanged(
+    String? previousRouteName,
+    String? currentRouteName,
+  ) {
+    if (currentRouteName?.trim() != RouteNames.orderList) {
+      return;
+    }
+    if (shouldRefreshOrderListOnRouteResume(
+      hasBeenTopRoute: _hasBeenTopRoute,
+      previousTopRouteName: previousRouteName,
+      currentTopRouteName: currentRouteName,
+    )) {
+      unawaited(_loadFirstPage());
+    }
+    _hasBeenTopRoute = true;
   }
 
   void _handleScroll() {

@@ -9,6 +9,7 @@ import 'package:sapat_cash/src/core/json/json.dart';
 import 'package:sapat_cash/src/core/layout/screen.dart';
 
 import '../../core/push/app_push.dart';
+import '../../core/push/route_names.dart';
 import 'webview_bridge_constants.dart';
 import 'webview_bridge_dispatcher.dart';
 import 'webview_bridge_models.dart';
@@ -18,6 +19,18 @@ bool shouldReloadCurrentWebView({
   Uri? currentUri,
 }) {
   return currentUri?.toString().trim() == targetUri.toString().trim();
+}
+
+bool shouldRefreshWebViewOnRouteResume({
+  required bool hasBeenTopRoute,
+  required String? previousTopRouteName,
+  required String? currentTopRouteName,
+}) {
+  if (!hasBeenTopRoute) {
+    return false;
+  }
+  return previousTopRouteName?.trim() != RouteNames.webView &&
+      currentTopRouteName?.trim() == RouteNames.webView;
 }
 
 class WebViewPage extends StatefulWidget {
@@ -40,12 +53,14 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
   bool _appForeground = true;
   bool _bridgeEnabled = false;
   bool _controllerAvailable = true;
+  bool _hasBeenTopRoute = false;
   late String _title;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    AppPush.addRouteChangeListener(_handleRouteChanged);
     _title = widget.initialTitle?.trim() ?? 'Loading...';
   }
 
@@ -53,6 +68,7 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
   void dispose() {
     _appForeground = false;
     _syncJsBridgeState();
+    AppPush.removeRouteChangeListener(_handleRouteChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -83,6 +99,19 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
     _bridgeEnabled = false;
   }
 
+  void _handleRouteChanged(String? previousRouteName, String? currentRouteName) {
+    if (currentRouteName?.trim() == RouteNames.webView) {
+      if (shouldRefreshWebViewOnRouteResume(
+        hasBeenTopRoute: _hasBeenTopRoute,
+        previousTopRouteName: previousRouteName,
+        currentTopRouteName: currentRouteName,
+      )) {
+        unawaited(_reloadCurrentWebView());
+      }
+      _hasBeenTopRoute = true;
+    }
+  }
+
   Future<dynamic> _handleJsBridgeCall(List<dynamic> arguments) async {
     if (!_appForeground || !mounted) {
       return <String, dynamic>{'ignored': true};
@@ -96,6 +125,7 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
       request: request,
       goBackInWebView: _goBackInWebView,
       reloadOrOpenInWebView: _reloadOrOpenInWebView,
+      openInNewWebView: _openInNewWebView,
     );
     if (request.action != WebViewBridgeActionNames.requestCommonParams ||
         !request.expectsCallback ||
@@ -158,6 +188,18 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
         urlRequest: URLRequest(url: WebUri.uri(targetUri)),
       ),
     );
+  }
+
+  Future<void> _openInNewWebView(String url) async {
+    await AppPush.pushWebView(context, url: url);
+  }
+
+  Future<void> _reloadCurrentWebView() async {
+    final controller = _controller;
+    if (controller == null || !_controllerAvailable) {
+      return;
+    }
+    await _safeWebViewCall(() => controller.reload());
   }
 
   Future<Uri?> _resolveWebUri(String rawUrl) async {

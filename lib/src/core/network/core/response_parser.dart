@@ -21,7 +21,7 @@ class ResponseParser {
 
     return const NetworkResponse<dynamic>(
       code: -1,
-      message: 'Illegal response format',
+      message: 'Network error. Please try again.',
       data: null,
     );
   }

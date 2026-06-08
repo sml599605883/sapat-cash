@@ -19,6 +19,7 @@ class WebViewBridgeDispatcher {
     required WebViewBridgeRequest request,
     required Future<bool> Function() goBackInWebView,
     required Future<void> Function(String url) reloadOrOpenInWebView,
+    required Future<void> Function(String url) openInNewWebView,
   }) async {
     try {
       switch (request.action) {
@@ -59,6 +60,11 @@ class WebViewBridgeDispatcher {
           final uri = Uri.tryParse(url);
           if (uri == null) {
             return WebViewBridgeResult.failure('Invalid scheme');
+          }
+          final scheme = uri.scheme.toLowerCase();
+          if (scheme == 'http' || scheme == 'https') {
+            await openInNewWebView(url);
+            return WebViewBridgeResult.success();
           }
           final opened = await AppPush.handleInternalScheme(
             Navigator.of(context),

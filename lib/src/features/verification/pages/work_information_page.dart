@@ -48,7 +48,7 @@ class _WorkInformationPageState extends State<WorkInformationPage> {
       context,
       productId: widget.productId,
       popupType: _retainPopupType,
-      onGoBack: () => AppPush.popToHomeTabbar(context),
+      onGoBack: () => AppPush.pop(context),
     );
   }
 

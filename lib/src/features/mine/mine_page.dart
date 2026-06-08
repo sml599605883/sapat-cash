@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/json/json.dart';
 import '../../core/layout/screen.dart';
 import '../../core/network/api/api_client.dart';
 import '../../core/network/config/network_config.dart';
@@ -13,10 +14,20 @@ import '../common/fetch_popup_handler.dart';
 import '../main_tab/main_tab_controller.dart';
 import '../orders/order_list_page.dart';
 
+typedef MinePopupFetcher = Future<Json> Function();
+typedef MinePopupPresenter =
+    Future<void> Function(BuildContext context, Json popupPayload);
+
 class MinePage extends StatefulWidget {
-  const MinePage({super.key});
+  const MinePage({
+    super.key,
+    this.fetchPopupPayload,
+    this.showPopup,
+  });
 
   static const routeName = RouteNames.mine;
+  final MinePopupFetcher? fetchPopupPayload;
+  final MinePopupPresenter? showPopup;
 
   @override
   State<MinePage> createState() => _MinePageState();
@@ -31,7 +42,7 @@ class _MinePageState extends State<MinePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && context.read<MainTabController>().currentIndex == 1) {
         _refreshMineData();
       }
     });
@@ -50,11 +61,11 @@ class _MinePageState extends State<MinePage> {
     _loading = true;
     _lastRefreshToken = refreshToken;
     try {
-      final response = await apiService.fetchPopup(scene: 2);
+      final response = await _fetchPopupPayload();
       if (!_popupShowing && mounted) {
         _popupShowing = true;
         try {
-          await FetchPopupHandler.showIfNeeded(context, json: response.json);
+          await _showPopup(response);
         } finally {
           _popupShowing = false;
         }
@@ -67,6 +78,22 @@ class _MinePageState extends State<MinePage> {
       }
       _loading = false;
     }
+  }
+
+  Future<Json> _fetchPopupPayload() async {
+    final fetcher = widget.fetchPopupPayload;
+    if (fetcher != null) {
+      return fetcher();
+    }
+    return (await apiService.fetchPopup(scene: 2)).json;
+  }
+
+  Future<void> _showPopup(Json popupPayload) {
+    final presenter = widget.showPopup;
+    if (presenter != null) {
+      return presenter(context, popupPayload);
+    }
+    return FetchPopupHandler.showIfNeeded(context, json: popupPayload);
   }
 
   @override

@@ -23,7 +23,7 @@ class OfflinePage extends StatelessWidget {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: screen.dp(36)),
               child: Text(
-                'The network is unavailable. Please check your connection.',
+                'No internet. Pull to refresh or check settings.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: const Color(0xFF5F5752),
