@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sapat_cash/src/core/report/report_manager.dart';
 
 import '../../core/layout/screen.dart';
+import '../../core/network/config/network_config.dart';
 import '../../core/network/core/error_message_adapter.dart';
 import '../../core/push/app_push.dart';
 import '../../core/push/route_names.dart';
@@ -67,6 +68,13 @@ class _LoginViewState extends State<_LoginView> {
 
   void _backToHome() {
     AppPush.popToHomeTabbar(context);
+  }
+
+  void _openPrivacyPolicy() {
+    AppPush.pushWebView(
+      context,
+      url: '${NetworkConfig.defaultWebBaseUrl}/#/PhotoreceptionsTressels',
+    );
   }
 
   void _handleCodeChanged() {
@@ -321,13 +329,16 @@ class _LoginViewState extends State<_LoginView> {
                   ),
                 ),
                 SizedBox(height: screen.dp(14)),
-                GestureDetector(
-                  onTap: context.read<LoginController>().toggleAgreement,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(top: screen.dp(2)),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: context.read<LoginController>().toggleAgreement,
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          top: screen.dp(2),
+                          right: screen.dp(10),
+                        ),
                         child: Image.asset(
                           controller.agreed
                               ? 'assets/image/login/checkbox_checked.png'
@@ -336,26 +347,37 @@ class _LoginViewState extends State<_LoginView> {
                           height: screen.dp(16),
                         ),
                       ),
-                      SizedBox(width: screen.dp(10)),
-                      Expanded(
-                        child: RichText(
-                          text: TextSpan(
-                            style: TextStyle(
-                              color: const Color(0xFF331707),
-                              fontSize: screen.dp(12),
-                            ),
-                            children: const [
-                              TextSpan(text: 'I have read and agree to the '),
-                              TextSpan(
-                                text: 'Privacy Policy',
-                                style: TextStyle(color: Color(0xFFF45834)),
-                              ),
-                            ],
+                    ),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(
+                            color: const Color(0xFF331707),
+                            fontSize: screen.dp(12),
                           ),
+                          children: [
+                            const TextSpan(
+                              text: 'I have read and agree to the ',
+                            ),
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.baseline,
+                              baseline: TextBaseline.alphabetic,
+                              child: GestureDetector(
+                                onTap: _openPrivacyPolicy,
+                                child: Text(
+                                  'Privacy Policy',
+                                  style: TextStyle(
+                                    color: const Color(0xFFF45834),
+                                    fontSize: screen.dp(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
                 SizedBox(height: screen.dp(26)),
                 Center(
