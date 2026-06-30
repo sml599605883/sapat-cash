@@ -46,7 +46,7 @@ void main() {
                   popupFetchCount++;
                   return Json({'refortification': ''});
                 },
-                showPopup: (context, payload) async {},
+                showPopup: (_, __) async {},
               ),
             ),
           ),
