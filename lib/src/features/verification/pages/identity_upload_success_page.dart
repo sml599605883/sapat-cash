@@ -14,6 +14,20 @@ import '../widgets/verification_hint_row.dart';
 
 DateTime defaultIdentityBirthDate() => DateTime(2000, 1, 1);
 
+double calculateIdentityKeyboardOverlap({
+  required double fieldBottom,
+  required double viewportHeight,
+  required double keyboardInset,
+  required double bottomSpacing,
+}) {
+  if (keyboardInset <= 0) {
+    return 0;
+  }
+  final keyboardTop = viewportHeight - keyboardInset - bottomSpacing;
+  final overlap = fieldBottom - keyboardTop;
+  return overlap > 0 ? overlap : 0;
+}
+
 DateTime parseIdentityBirthDate(String raw, {DateTime? now}) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty || trimmed == '--') {
@@ -76,6 +90,9 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
   late final FocusNode _fullNameFocusNode;
   late final FocusNode _idNumberFocusNode;
   late final FocusNode _inactiveFocusNode;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _fullNameFieldKey = GlobalKey();
+  final GlobalKey _idNumberFieldKey = GlobalKey();
   late DateTime _selectedBirthDate;
 
   @override
@@ -90,6 +107,18 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
       skipTraversal: true,
     );
     _selectedBirthDate = _parseBirthDate(widget.result.birthDate);
+    _fullNameFocusNode.addListener(
+      () => _handleInputFocusChanged(
+        focusNode: _fullNameFocusNode,
+        fieldKey: _fullNameFieldKey,
+      ),
+    );
+    _idNumberFocusNode.addListener(
+      () => _handleInputFocusChanged(
+        focusNode: _idNumberFocusNode,
+        fieldKey: _idNumberFieldKey,
+      ),
+    );
   }
 
   @override
@@ -99,6 +128,7 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
     _fullNameFocusNode.dispose();
     _idNumberFocusNode.dispose();
     _inactiveFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -115,7 +145,7 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
       child: DismissKeyboard(
         child: Scaffold(
           backgroundColor: Colors.white,
-          resizeToAvoidBottomInset: false,
+          resizeToAvoidBottomInset: true,
           bottomNavigationBar: SafeArea(
             top: false,
             child: Padding(
@@ -136,12 +166,15 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
             child: Focus(
               focusNode: _inactiveFocusNode,
               child: SingleChildScrollView(
+                controller: _scrollController,
                 physics: const BouncingScrollPhysics(),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.fromLTRB(
                   screen.dp(16),
                   screen.dp(15),
                   screen.dp(16),
-                  screen.dp(24),
+                  screen.dp(24) + MediaQuery.viewInsetsOf(context).bottom,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,12 +203,14 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
                     ),
                     SizedBox(height: screen.dp(26)),
                     _EditableSuccessInfoCard(
+                      key: _fullNameFieldKey,
                       label: 'Full Name',
                       controller: _fullNameController,
                       focusNode: _fullNameFocusNode,
                     ),
                     SizedBox(height: screen.dp(16)),
                     _EditableSuccessInfoCard(
+                      key: _idNumberFieldKey,
                       label: 'ID No.',
                       controller: _idNumberController,
                       focusNode: _idNumberFocusNode,
@@ -267,6 +302,59 @@ class _IdentityUploadSuccessPageState extends State<IdentityUploadSuccessPage> {
     _idNumberFocusNode.unfocus();
     FocusScope.of(context).requestFocus(_inactiveFocusNode);
   }
+
+  void _handleInputFocusChanged({
+    required FocusNode focusNode,
+    required GlobalKey fieldKey,
+  }) {
+    if (!focusNode.hasFocus) {
+      return;
+    }
+    Future<void>.delayed(const Duration(milliseconds: 250), () {
+      if (!mounted || !focusNode.hasFocus) {
+        return;
+      }
+      _adjustForKeyboardIfNeeded(fieldKey);
+    });
+  }
+
+  void _adjustForKeyboardIfNeeded(GlobalKey fieldKey) {
+    final fieldContext = fieldKey.currentContext;
+    if (fieldContext == null || !_scrollController.hasClients) {
+      return;
+    }
+
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final renderObject = fieldContext.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return;
+    }
+
+    final screen = context.screen;
+    final fieldOffset = renderObject.localToGlobal(Offset.zero);
+    final overlap = calculateIdentityKeyboardOverlap(
+      fieldBottom: fieldOffset.dy + renderObject.size.height,
+      viewportHeight: MediaQuery.sizeOf(context).height,
+      keyboardInset: keyboardInset,
+      bottomSpacing: screen.dp(12),
+    );
+    if (overlap <= 0) {
+      return;
+    }
+
+    final targetOffset = (_scrollController.offset + overlap).clamp(
+      0.0,
+      _scrollController.position.maxScrollExtent,
+    );
+    if ((targetOffset - _scrollController.offset).abs() < 1) {
+      return;
+    }
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+  }
 }
 
 class IdentityUploadSuccessResult {
@@ -335,6 +423,7 @@ class _SuccessHeader extends StatelessWidget {
 
 class _EditableSuccessInfoCard extends StatelessWidget {
   const _EditableSuccessInfoCard({
+    super.key,
     required this.label,
     required this.controller,
     required this.focusNode,

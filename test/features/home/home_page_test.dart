@@ -46,7 +46,7 @@ void main() {
                   popupFetchCount++;
                   return Json({'refortification': ''});
                 },
-                showPopup: (_, __) async {},
+                showPopup: (context, payload) async {},
               ),
             ),
           ),
@@ -61,59 +61,58 @@ void main() {
       },
     );
 
-    testWidgets(
-      'dismisses loading before waiting for popup to close',
-      (tester) async {
-        tester.view.physicalSize = const Size(1440, 3200);
-        tester.view.devicePixelRatio = 3;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('dismisses loading before waiting for popup to close', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1440, 3200);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-        final popupCompleter = Completer<void>();
-        var popupShown = false;
+      final popupCompleter = Completer<void>();
+      var popupShown = false;
 
-        await tester.pumpWidget(
-          ChangeNotifierProvider(
-            create: (_) => MainTabController(),
-            child: MaterialApp(
-              builder: (context, child) {
-                final easyLoadingBuilder = EasyLoading.init();
-                final mediaQuery = MediaQuery.of(context);
-                return MediaQuery(
-                  data: mediaQuery.copyWith(
-                    textScaler: const TextScaler.linear(1.0),
-                  ),
-                  child: easyLoadingBuilder(context, child),
-                );
-              },
-              home: HomePage(
-                fetchHomeData: () async => AppHomeResponse(
-                  icon: const HomeIconEntry(imageUrl: '', link: ''),
+      await tester.pumpWidget(
+        ChangeNotifierProvider(
+          create: (_) => MainTabController(),
+          child: MaterialApp(
+            builder: (context, child) {
+              final easyLoadingBuilder = EasyLoading.init();
+              final mediaQuery = MediaQuery.of(context);
+              return MediaQuery(
+                data: mediaQuery.copyWith(
+                  textScaler: const TextScaler.linear(1.0),
                 ),
-                fetchPopupPayload: () async => Json({
-                  'refortification': '3',
-                  'haem': {'antagonist': 'https://example.com/popup.png'},
-                }),
-                showPopup: (_, popupPayload) {
-                  expect(popupPayload, isA<Json>());
-                  popupShown = true;
-                  return popupCompleter.future;
-                },
+                child: easyLoadingBuilder(context, child),
+              );
+            },
+            home: HomePage(
+              fetchHomeData: () async => AppHomeResponse(
+                icon: const HomeIconEntry(imageUrl: '', link: ''),
               ),
+              fetchPopupPayload: () async => Json({
+                'refortification': '3',
+                'haem': {'antagonist': 'https://example.com/popup.png'},
+              }),
+              showPopup: (_, popupPayload) {
+                expect(popupPayload, isA<Json>());
+                popupShown = true;
+                return popupCompleter.future;
+              },
             ),
           ),
-        );
+        ),
+      );
 
-        await tester.pump();
-        await tester.pump();
-        while (tester.takeException() != null) {}
+      await tester.pump();
+      await tester.pump();
+      while (tester.takeException() != null) {}
 
-        expect(popupShown, isTrue);
-        expect(EasyLoading.isShow, isFalse);
+      expect(popupShown, isTrue);
+      expect(EasyLoading.isShow, isFalse);
 
-        popupCompleter.complete();
-        await tester.pumpAndSettle();
-      },
-    );
+      popupCompleter.complete();
+      await tester.pumpAndSettle();
+    });
   });
 }

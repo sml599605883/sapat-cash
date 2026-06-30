@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sapat_cash/src/features/web/webview_page.dart';
 import 'package:sapat_cash/src/core/push/route_names.dart';
+import 'package:sapat_cash/src/features/web/webview_page.dart';
 
 void main() {
   group('shouldReloadCurrentWebView', () {
@@ -19,6 +19,26 @@ void main() {
         shouldReloadCurrentWebView(
           currentUri: Uri.parse('https://example.com/order?id=1'),
           targetUri: Uri.parse('https://example.com/order?id=2'),
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('shouldMarkWebViewAsTopRouteOnMount', () {
+    test('returns true when current top route is webview', () {
+      expect(
+        shouldMarkWebViewAsTopRouteOnMount(
+          currentTopRouteName: RouteNames.webView,
+        ),
+        isTrue,
+      );
+    });
+
+    test('returns false when current top route is another page', () {
+      expect(
+        shouldMarkWebViewAsTopRouteOnMount(
+          currentTopRouteName: RouteNames.bindCard,
         ),
         isFalse,
       );

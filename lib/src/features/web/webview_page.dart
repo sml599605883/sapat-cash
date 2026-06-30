@@ -21,6 +21,12 @@ bool shouldReloadCurrentWebView({
   return currentUri?.toString().trim() == targetUri.toString().trim();
 }
 
+bool shouldMarkWebViewAsTopRouteOnMount({
+  required String? currentTopRouteName,
+}) {
+  return currentTopRouteName?.trim() == RouteNames.webView;
+}
+
 bool shouldRefreshWebViewOnRouteResume({
   required bool hasBeenTopRoute,
   required String? previousTopRouteName,
@@ -62,6 +68,14 @@ class _WebViewPageState extends State<WebViewPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     AppPush.addRouteChangeListener(_handleRouteChanged);
     _title = widget.initialTitle?.trim() ?? 'Loading...';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _hasBeenTopRoute = shouldMarkWebViewAsTopRouteOnMount(
+        currentTopRouteName: AppPush.currentRouteName(),
+      );
+    });
   }
 
   @override

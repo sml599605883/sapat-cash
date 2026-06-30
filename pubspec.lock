@@ -230,14 +230,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_device_info_plus:
-    dependency: "direct main"
-    description:
-      name: flutter_device_info_plus
-      sha256: "7afb685874d3b3932cef51d7a346cfbf5e9a2266dc4ee3cd05cdef928a541fe7"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.1"
   flutter_easyloading:
     dependency: "direct main"
     description:

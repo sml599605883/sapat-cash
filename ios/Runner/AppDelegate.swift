@@ -1,4 +1,5 @@
 import Flutter
+import StoreKit
 import UIKit
 import AppTrackingTransparency
 import AdSupport
@@ -91,8 +92,28 @@ import UserNotifications
       buildDeviceSnapshot(result: result)
     case "initializeAdjust":
       result(nil)
+    case "requestAppReview":
+      requestAppReview(result: result)
     default:
       result(FlutterMethodNotImplemented)
+    }
+  }
+
+  private func requestAppReview(result: @escaping FlutterResult) {
+    DispatchQueue.main.async {
+      if #available(iOS 14.0, *) {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        if let windowScene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first {
+          SKStoreReviewController.requestReview(in: windowScene)
+          result(nil)
+          return
+        }
+      } else if #available(iOS 10.3, *) {
+        SKStoreReviewController.requestReview()
+        result(nil)
+        return
+      }
+      result(nil)
     }
   }
 

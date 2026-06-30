@@ -3,9 +3,11 @@ class NetworkConfig {
 
   static const Set<int> successCodes = {0, 200, 20000};
 
-  static const String defaultApiBaseUrl = 'http://47.80.82.124/psc-v1';
-  static const String defaultWebBaseUrl = 'http://47.80.82.124';
-  static const String remoteConfigUrl = 'https://config.example.com/bootstrap';
+  static const String defaultApiBaseUrl =
+      'https://service.dingtaitechcorp.com/psc-v1';
+  static const String defaultWebBaseUrl = 'https://service.dingtaitechcorp.com';
+  static const String remoteConfigUrl =
+      'https://raw.githubusercontent.com/DCSTC/Sapat-Cash/refs/heads/main/info';
 
   static const String signatureSecret = '152df029db80cdab409191852d63c17a';
   static const String signatureFieldKey = 'rehabilitant';

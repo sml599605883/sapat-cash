@@ -24,8 +24,8 @@ class NetworkBootstrapper {
     try {
       final response = await _dio.get<dynamic>(NetworkConfig.remoteConfigUrl);
       final payload = _decodePayload(response.data);
-      final apiBaseUrl = payload['apiBaseUrl'].stringOrNull ?? defaultApi;
-      final webBaseUrl = payload['webBaseUrl'].stringOrNull ?? defaultWeb;
+      final apiBaseUrl = payload['api'].stringOrNull ?? defaultApi;
+      final webBaseUrl = payload['web'].stringOrNull ?? defaultWeb;
       return NetworkBootstrapResult(
         apiBaseUrl: apiBaseUrl,
         webBaseUrl: webBaseUrl,
@@ -54,14 +54,17 @@ class NetworkBootstrapper {
     }
     if (raw is String) {
       final trimmed = raw.trim();
+      final parsed = Json.parse(trimmed);
+      if (parsed.mapOrNull != null) {
+        return parsed;
+      }
       try {
-        return Json.parse(trimmed);
-      } catch (_) {
-        try {
-          return Json.parseBytes(base64Decode(trimmed));
-        } catch (_) {
-          return Json(<String, dynamic>{});
+        final decoded = Json.parseBytes(base64Decode(trimmed));
+        if (decoded.mapOrNull != null) {
+          return decoded;
         }
+      } catch (_) {
+        // Fall through to the empty payload below.
       }
     }
     return Json(<String, dynamic>{});

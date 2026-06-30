@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:sapat_cash/src/core/network/core/error_message_adapter.dart';
+import 'package:sapat_cash/src/core/report/report_native_bridge.dart';
 import 'package:sapat_cash/src/features/verification/pages/bank_account_list_page.dart';
 import 'package:sapat_cash/src/features/verification/pages/bind_card_page.dart';
 
@@ -88,10 +89,8 @@ class WebViewBridgeDispatcher {
               .resolveMappedCommonParams(path: path);
           return WebViewBridgeResult.success(mappedParams);
         case WebViewBridgeActionNames.toGrade:
-          return WebViewBridgeResult.failure(
-            'Unsupported action: toGrade',
-            code: -2,
-          );
+          await ReportNativeBridge.requestAppReview();
+          return WebViewBridgeResult.success();
         case WebViewBridgeActionNames.retryOrderDialog:
           final orderNo =
               Json(request.data['unsuspecting']).stringOrNull?.trim() ?? '';

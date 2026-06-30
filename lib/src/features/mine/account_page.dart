@@ -307,13 +307,15 @@ class _AccountPageState extends State<AccountPage> {
                 ),
                 child: Row(
                   children: [
-                    Container(
+                    SizedBox(
                       width: screen.dp(64),
                       height: screen.dp(64),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD8D8D8),
+                      child: ClipRRect(
                         borderRadius: BorderRadius.circular(screen.dp(10)),
-                        border: Border.all(color: const Color(0xFF979797)),
+                        child: Image.asset(
+                          'assets/image/logo.png',
+                          fit: BoxFit.fill,
+                        ),
                       ),
                     ),
                     SizedBox(width: screen.dp(32)),
@@ -321,7 +323,7 @@ class _AccountPageState extends State<AccountPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'App Name',
+                          'Sapat Cash',
                           style: TextStyle(
                             color: Color(0xFF281001),
                             fontSize: screen.dp(24),
@@ -366,7 +368,7 @@ class _AccountPageState extends State<AccountPage> {
                   borderRadius: BorderRadius.circular(screen.dp(10)),
                 ),
                 child: Text(
-                  'Pera Agad.com.cn',
+                  'https://www.dingtaitechcorp.com',
                   style: TextStyle(
                     color: Color(0xFF281001),
                     fontSize: screen.dp(16),

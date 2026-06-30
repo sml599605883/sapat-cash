@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:sapat_cash/src/core/network/config/network_config.dart';
 import 'package:sapat_cash/src/core/push/app_push.dart';
 
 import '../../../core/layout/screen.dart';
 import '../home_models.dart';
+
+String resolveTopCardIconUrl({
+  required String iconImageUrl,
+  required String productLogo,
+}) {
+  final trimmedIcon = iconImageUrl.trim();
+  if (trimmedIcon.isNotEmpty) {
+    return trimmedIcon;
+  }
+  return productLogo.trim();
+}
 
 class HomeTopSection extends StatelessWidget {
   const HomeTopSection({super.key, this.section, this.icon});
@@ -107,8 +119,11 @@ class _TopCard extends StatelessWidget {
     final amountText = card?.amountText?.trim();
     final amount = card?.amount?.trim();
     final applyText = card?.buttonText?.trim();
-    final iconUrl = icon?.imageUrl.trim();
-    final hasIconUrl = iconUrl != null && iconUrl.isNotEmpty;
+    final iconUrl = resolveTopCardIconUrl(
+      iconImageUrl: icon?.imageUrl ?? '',
+      productLogo: card?.productLogo ?? '',
+    );
+    final hasIconUrl = iconUrl.isNotEmpty;
     final creditProgress =
         card?.creditProgress ?? const <HomeCreditProgressEntry>[];
 
@@ -454,11 +469,17 @@ class _WelcomeHeader extends StatelessWidget {
 
     return Row(
       children: [
-        Image.asset(
-          'assets/image/home/home_divider_lines.png',
-          width: screen.dp(20),
-          height: screen.dp(16),
-          fit: BoxFit.fill,
+        GestureDetector(
+          onTap: () => AppPush.pushWebView(
+            context,
+            url: '${NetworkConfig.defaultWebBaseUrl}/#/OsteotomesLensless',
+          ),
+          child: Image.asset(
+            'assets/image/home/home_divider_lines.png',
+            width: screen.dp(20),
+            height: screen.dp(20),
+            fit: BoxFit.fill,
+          ),
         ),
         const Spacer(),
         Text(
@@ -493,21 +514,22 @@ class _MetricItem extends StatelessWidget {
     return Column(
       children: [
         Image.asset(icon, width: screen.dp(26), height: screen.dp(26)),
-        SizedBox(height: screen.dp(6)),
+        SizedBox(height: screen.dp(4)),
         Text(
           value,
           style: TextStyle(
             color: Colors.white,
             fontSize: screen.dp(16),
+            height: 18 / 16,
             fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: screen.dp(1)),
         Text(
           label,
           style: TextStyle(
             color: HomeTopSection._lightText,
             fontSize: screen.dp(10),
+            height: 12 / 10,
           ),
         ),
       ],

@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_device_info_plus/flutter_device_info_plus.dart';
 
 import '../json/json.dart';
 import '../network/debug/network_proxy_manager.dart';
@@ -16,9 +15,6 @@ class ReportNativeBridge {
   static const _eventChannel = EventChannel('sapat_cash/report_event');
 
   static Stream<Json>? _eventStream;
-  static final FlutterDeviceInfoPlus _flutterDeviceInfo =
-      FlutterDeviceInfoPlus();
-  static Future<String>? _screenSizeFuture;
 
   static Stream<Json> nativeEvents() {
     _eventStream ??= _eventChannel
@@ -92,13 +88,12 @@ class ReportNativeBridge {
   }
 
   static Future<NativeDeviceSnapshot> getDeviceSnapshot() async {
-    final screenSize = await _resolveScreenSize();
     try {
       final json = Json(
         await _methodChannel.invokeMethod<dynamic>('getDeviceSnapshot'),
       );
       if (json.mapOrNull == null) {
-        return _fallbackSnapshot(screenSize: screenSize);
+        return _fallbackSnapshot();
       }
       return NativeDeviceSnapshot(
         idfv: json['idfv'].stringValue,
@@ -122,7 +117,7 @@ class ReportNativeBridge {
         model: json['model'].stringValue,
         screenHeight: json['screenHeight'].intValue,
         screenWidth: json['screenWidth'].intValue,
-        screenSize: screenSize,
+        screenSize: json['screenSize'].stringOrNull ?? '',
         innerIp: json['innerIp'].stringValue,
         currentWifiName: json['currentWifiName'].stringValue,
         currentWifiBssid: json['currentWifiBssid'].stringValue,
@@ -135,7 +130,7 @@ class ReportNativeBridge {
         riskDeviceId: json['riskDeviceId'].stringValue,
       );
     } catch (_) {
-      return _fallbackSnapshot(screenSize: screenSize);
+      return _fallbackSnapshot();
     }
   }
 
@@ -144,6 +139,15 @@ class ReportNativeBridge {
       await _methodChannel.invokeMethod<void>('initializeAdjust', {
         'token': token,
       });
+    } catch (_) {}
+  }
+
+  static Future<void> requestAppReview() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) {
+      return;
+    }
+    try {
+      await _methodChannel.invokeMethod<void>('requestAppReview');
     } catch (_) {}
   }
 
@@ -156,24 +160,7 @@ class ReportNativeBridge {
     }
   }
 
-  static Future<String> _resolveScreenSize() {
-    return _screenSizeFuture ??= _loadScreenSize();
-  }
-
-  static Future<String> _loadScreenSize() async {
-    try {
-      final info = await _flutterDeviceInfo.getDeviceInfo();
-      final sizeInches = info.displayInfo.screenSizeInches;
-      if (sizeInches <= 0) {
-        return '';
-      }
-      return sizeInches.toStringAsFixed(1);
-    } catch (_) {
-      return '';
-    }
-  }
-
-  static NativeDeviceSnapshot _fallbackSnapshot({String screenSize = ''}) {
+  static NativeDeviceSnapshot _fallbackSnapshot() {
     return NativeDeviceSnapshot(
       language: PlatformDispatcher.instance.locale.languageCode,
       timeZoneName: DateTime.now().timeZoneName,
@@ -181,7 +168,6 @@ class ReportNativeBridge {
       brand: Platform.operatingSystem,
       model: Platform.localHostname,
       deviceName: Platform.localHostname,
-      screenSize: screenSize,
     );
   }
 }
