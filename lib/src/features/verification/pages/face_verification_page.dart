@@ -73,9 +73,16 @@ class _FaceVerificationPageState extends State<FaceVerificationPage>
       await _trustdeviceProPlugin.initWithOptions({
         'partner': 'boqin_ph',
         'appKey': '1dc25522f2adc77f5347816c0f7fa31b',
-        'appName': 'julyTwo_test',
+        // 'partner': 'sapat_cash',
+        // 'appKey': 'd5eda95fafce89f083647d446cffa1fe',
+        // 'appName': 'julyTwo_test',
         'country': 'sg',
         'language': 'en',
+        'showReadyPage': false,
+        "runningTasks": false,
+        "readPhonoe": false,
+        "installPackageList": false,
+        "playAudio": true,
       });
     } catch (error) {
       debugPrint('trustdevice_pro_plugin init failed: $error');
